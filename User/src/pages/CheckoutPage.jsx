@@ -465,7 +465,7 @@ const CheckoutPage = () => {
                 Share the receipt with the Russelco team to process your order
                 offline
               </li>
-              <li>You can email the receipt to: orders@russelco.com</li>
+              <li>You can email the receipt to: Russelcoinc@aol.com</li>
             </ul>
           </div>
         </div>
@@ -482,7 +482,7 @@ const CheckoutPage = () => {
           <button
             onClick={() => {
               // Open email client with pre-filled details
-              window.location.href = `mailto:orders@russelco.com?subject=Order%20Receipt&body=Please%20find%20attached%20the%20order%20receipt%20for%20processing.`;
+              window.location.href = `mailto:Russelcoinc@aol.com?subject=Order%20Receipt&body=Please%20find%20attached%20the%20order%20receipt%20for%20processing.`;
             }}
             className="bg-green-500 text-white px-6 py-3 rounded-xs hover:bg-green-600 transition w-full md:w-auto cursor-pointer"
           >

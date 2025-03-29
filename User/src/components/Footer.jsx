@@ -26,22 +26,22 @@ const Footer = () => {
                 <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6 text-center">
                     <div className="flex items-center">
                         <Phone size={20} className="mr-2 text-red-500" />
-                        <span>(555) 123-FRESH</span>
+                        <span>1 (732) 860-3187</span>
                     </div>
                     <div className="flex items-center">
                         <Mail size={20} className="mr-2 text-red-500" />
-                        <span>support@freshmarket.com</span>
+                        <span>Russelcoinc@aol.com</span>
                     </div>
                     <div className="flex items-center">
                         <MapPin size={20} className="mr-2 text-red-500" />
-                        <span>123 Produce Street, red City, ST 67890</span>
+                        <span>106 Melrich Rd , Cranbury NJ , 08512</span>
                     </div>
                 </div>
 
                 {/* Copyright Section */}
                 <div className="text-center pt-4 border-t border-gray-700">
                     <p className="text-sm text-gray-400">
-                        © {new Date().getFullYear()} FreshMarket. All Rights Reserved.
+                        © {new Date().getFullYear()} RusselCo. All Rights Reserved.
                     </p>
                 </div>
             </div>
