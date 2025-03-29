@@ -1,8 +1,19 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, FolderTree, ChevronRight } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, ShoppingBag, FolderTree, ChevronRight, LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext'; // Make sure this path is correct
 
 const Sidebar = () => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    const { success } = await signOut();
+    if (success) {
+      navigate('/login');
+    }
+  };
+
   return (
     <div className="h-full bg-white w-64 fixed left-0 top-0 shadow-xl border-r border-gray-100 flex flex-col">
       {/* Logo and Branding Section */}
@@ -86,6 +97,26 @@ const Sidebar = () => {
           />
         </NavLink>
       </nav>
+      
+      {/* Logout Button - Added above the footer */}
+      <div className="px-4 mb-4">
+        <button
+          onClick={handleLogout}
+          className="w-full group flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 text-gray-600 hover:bg-red-50 hover:text-red-600"
+        >
+          <div className="flex items-center">
+            <LogOut 
+              size={20} 
+              className="mr-3 transition-transform group-hover:scale-110" 
+            />
+            <span>Logout</span>
+          </div>
+          <ChevronRight 
+            size={16} 
+            className="opacity-0 group-hover:opacity-100 transition-opacity" 
+          />
+        </button>
+      </div>
       
       {/* Footer Section */}
       <div className="p-4 border-t border-gray-200 text-center">
