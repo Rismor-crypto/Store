@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: 'https://adminrusselco.vercel.app' + '/auth/callback',
+                    emailRedirectTo: 'https://adminrusselco.vercel.app/auth/callback',
                 },
             });
 
