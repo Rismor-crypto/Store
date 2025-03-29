@@ -11,7 +11,6 @@ const Footer = () => {
                     <h3 className="text-2xl font-bold">
                         <span className="text-red-500">Russel</span>Co
                     </h3>
-                    <p className="text-gray-300 text-sm">Wholesale Produce Distributor</p>
                 </div>
 
                 {/* Quick Links Section */}
