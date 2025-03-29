@@ -74,10 +74,10 @@ const CheckoutPage = () => {
 
   // Generate PDF and complete order
   const generatePDFAndCompleteOrder = async () => {
-    // if (validateForm()) {
+    if (validateForm()) {
       // Show invoice
       setShowInvoice(true);
-    // }
+    }
   };
 
   // Separate PDF download function
@@ -138,10 +138,57 @@ const CheckoutPage = () => {
       alert("There was an error generating your PDF. Please try again.");
     }
   };
-    // Clear cart and navigate to success page
-    // clearCart();
-    // setPageState("success");
-    // setShowInvoice(false);
+
+  const downloadCSV = () => {
+    // Create CSV header row
+    const headers = ["UPC", "Description", "Quantity", "Unit Price", "Discount", "Line Total"];
+    
+    // Create CSV data rows from cart items
+    const rows = cartItems.map(item => [
+      item.upc,
+      item.description,
+      item.quantity,
+      item.price.toFixed(2),
+      item.discount ? `${item.discount}%` : "0%",
+      item.discount && item.discount > 0 
+        ? (getDiscountedPrice(item) * item.quantity).toFixed(2)
+        : (item.price * item.quantity).toFixed(2)
+    ]);
+    
+    // Add summary rows
+    rows.push([], ["", "", "", "", "Subtotal", totalWithoutDiscount.toFixed(2)]);
+    rows.push(["", "", "", "", "Discount", (totalWithoutDiscount - totalWithDiscount).toFixed(2)]);
+    rows.push(["", "", "", "", "Total Due", totalWithDiscount.toFixed(2)]);
+    
+    // Add customer information
+    rows.push([]);
+    rows.push(["Customer Information"]);
+    rows.push(["Name", `${formData.firstName} ${formData.lastName}`]);
+    rows.push(["Email", formData.email]);
+    rows.push(["Phone", formData.phone]);
+    rows.push(["Address", formData.address]);
+    rows.push(["Date", new Date().toLocaleDateString()]);
+    
+    // Convert the rows to CSV format
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+    
+    // Create a Blob with the CSV data
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    
+    // Create a download link and trigger the download
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "order_data.csv");
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
 
   // Render checkout page
@@ -303,17 +350,11 @@ const CheckoutPage = () => {
                       <span className="text-[#fb2c36]">RUSSEL</span>
                       <span className="text-[#000000]">CO</span>
                     </div>
-                    <p className="text-sm md:text-base">
-                      Wholesale Produce Distributor
-                    </p>
                   </div>
                   <div className="text-center md:text-right">
                     <h2 className="text-xl md:text-2xl font-bold">INVOICE</h2>
                     <p className="text-sm">
                       Date: {new Date().toLocaleDateString()}
-                    </p>
-                    <p className="text-sm">
-                      Invoice #: {Math.floor(Math.random() * 10000)}
                     </p>
                   </div>
                 </div>
@@ -425,6 +466,12 @@ const CheckoutPage = () => {
                   className="bg-green-500 text-white px-4 py-2 rounded w-full md:w-auto"
                 >
                   Download PDF
+                </button>
+                <button
+                  onClick={downloadCSV}
+                  className="bg-blue-500 text-white px-4 py-2 rounded w-full md:w-auto"
+                >
+                  Download CSV
                 </button>
               </div>
             </div>
