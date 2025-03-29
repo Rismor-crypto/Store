@@ -8,7 +8,7 @@ import Categories from './pages/Categories';
 import { ProductProvider } from './context/ProductContext';
 import AddProductPage from './pages/AddProductPage';
 import LoginPage from './pages/Login';
-import AuthCallback from './pages/AuthCallback';
+import AuthCallback from './pages/AuthCallBack';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
