@@ -9,7 +9,7 @@ const Footer = () => {
                 {/* Brand Section */}
                 <div className="text-center mb-6">
                     <h3 className="text-2xl font-bold">
-                        <span className="text-red-500">Russel</span>co
+                        <span className="text-red-500">Russelco</span>
                     </h3>
                 </div>
 

@@ -347,8 +347,8 @@ const CheckoutPage = () => {
                 <div className="flex justify-between items-start mb-8">
                   <div className="mb-4 md:mb-0">
                     <div className="text-2xl font-bold">
-                      <span className="text-[#fb2c36]">RUSSEL</span>
-                      <span className="text-[#000000]">CO</span>
+                      <span className="text-[#fb2c36]">Russel</span>
+                      <span className="text-[#fc2c36]">co</span>
                     </div>
                   </div>
                   <div className="text-center md:text-right">
