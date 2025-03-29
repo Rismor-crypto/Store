@@ -9,7 +9,7 @@ const Footer = () => {
                 {/* Brand Section */}
                 <div className="text-center mb-6">
                     <h3 className="text-2xl font-bold">
-                        <span className="text-red-500">Russel</span>Co
+                        <span className="text-red-500">Russel</span>co
                     </h3>
                 </div>
 
@@ -40,7 +40,7 @@ const Footer = () => {
                 {/* Copyright Section */}
                 <div className="text-center pt-4 border-t border-gray-700">
                     <p className="text-sm text-gray-400">
-                        © {new Date().getFullYear()} RusselCo. All Rights Reserved.
+                        © {new Date().getFullYear()} Russelco. All Rights Reserved.
                     </p>
                 </div>
             </div>
