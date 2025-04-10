@@ -89,6 +89,14 @@ const SearchBar = () => {
     setSearchTerm('');
   };
 
+  // Handle key press for the Enter key
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && searchTerm.trim() !== '') {
+      e.preventDefault();
+      handleViewAllProducts();
+    }
+  };
+
   return (
     <div className="relative w-full" ref={searchRef}>
       <div className="relative flex items-center bg-white rounded-xs overflow-hidden">
@@ -98,6 +106,7 @@ const SearchBar = () => {
           className="w-full p-2 pl-4 text-black outline-none"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={handleKeyPress}
           onFocus={() => {
             if (productSuggestions.length > 0) {
               setIsDropdownVisible(true);
@@ -110,6 +119,15 @@ const SearchBar = () => {
             <Loader2 className="animate-spin" size={24} />
           </div>
         )}
+        
+        {/* Search button */}
+        <button 
+          className="absolute right-0 top-0 bottom-0 text-gray-500 hover:text-red-600 p-2 px-4 transition"
+          onClick={handleViewAllProducts}
+          disabled={searchTerm.trim() === ''}
+        >
+          <Search size={24} />
+        </button>
       </div>
       
       {/* Product Suggestions or No Results */}

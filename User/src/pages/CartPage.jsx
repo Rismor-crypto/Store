@@ -40,6 +40,42 @@ const CartPage = () => {
     }
   };
 
+  // New case handling functions
+  const handleIncreaseCases = (productId) => {
+    const currentItem = cartItems.find(item => item.id === productId);
+    updateQuantity(productId, currentItem.quantity + currentItem.case_pack);
+  };
+
+  const handleDecreaseCases = (productId) => {
+    const currentItem = cartItems.find(item => item.id === productId);
+    const newQuantity = currentItem.quantity - currentItem.case_pack;
+    if (newQuantity >= 1) {
+      updateQuantity(productId, newQuantity);
+    } else {
+      updateQuantity(productId, 1);
+    }
+  };
+
+  const handleCaseChange = (productId, event) => {
+    const value = event.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      const currentItem = cartItems.find(item => item.id === productId);
+      const caseQuantity = value === '' ? 0 : parseInt(value, 10);
+      const eachesQuantity = currentItem.quantity % currentItem.case_pack;
+      const newQuantity = (caseQuantity * currentItem.case_pack) + eachesQuantity;
+      updateQuantity(productId, newQuantity > 0 ? newQuantity : 1);
+    }
+  };
+
+  const handleCaseBlur = (productId, event) => {
+    const value = event.target.value;
+    if (value === '') {
+      const currentItem = cartItems.find(item => item.id === productId);
+      const eachesQuantity = currentItem.quantity % currentItem.case_pack;
+      updateQuantity(productId, eachesQuantity > 0 ? eachesQuantity : 1);
+    }
+  };
+
   const getDiscountedPrice = (product) => {
     if (product.discount && product.discount > 0) {
       const discountAmount = product.price * (product.discount / 100);
@@ -51,6 +87,16 @@ const CartPage = () => {
   const getProductTotal = (product) => {
     const discountedPrice = parseFloat(getDiscountedPrice(product));
     return (discountedPrice * product.quantity).toFixed(2);
+  };
+
+  // Calculate case count for an item
+  const getCaseCount = (item) => {
+    return Math.floor(item.quantity / item.case_pack);
+  };
+
+  // Calculate eaches count (remainder after cases)
+  const getEachesCount = (item) => {
+    return item.quantity % item.case_pack;
   };
 
   if (cartItems.length === 0) {
@@ -116,7 +162,7 @@ const CartPage = () => {
                           <span className="line-through">${item.price.toFixed(2)}</span>
                           <span className="text-blue-600">${getDiscountedPrice(item)}</span>
                           <span className="bg-blue-600 text-white px-2 py-0.5 rounded-xs text-xs">
-                          Save ${((item.discount * item.price)/100).toFixed(2)}
+                            Save ${((item.discount * item.price) / 100).toFixed(2)}
                           </span>
                         </div>
                       ) : (
@@ -127,37 +173,73 @@ const CartPage = () => {
                   </div>
                 </div>
 
-                {/* Quantity and Total - Bottom Row */}
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                  {/* Quantity Control */}
-                  <div className="flex items-center border rounded-xs">
-                    <button
-                      onClick={() => handleDecreaseQuantity(item.id)}
-                      className="p-1.5 hover:bg-gray-100 rounded-l-xs cursor-pointer"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <input
-                      type="text"
-                      value={item.quantity}
-                      onChange={(e) => handleQuantityChange(item.id, e)}
-                      onBlur={(e) => handleQuantityBlur(item.id, e)}
-                      className="w-12 text-center py-1 border-0 focus:ring-0 focus:outline-none"
-                      aria-label="Quantity"
-                    />
-                    <button
-                      onClick={() => handleIncreaseQuantity(item.id)}
-                      className="p-1.5 hover:bg-gray-100 rounded-r-xs cursor-pointer"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus size={16} />
-                    </button>
+                {/* Quantity Controls - Bottom Row */}
+                <div className="flex flex-col mt-3 pt-3 border-t border-gray-100 space-y-3">
+                  {/* Eaches Quantity Control */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-2 text-sm font-medium">Eaches:</span>
+                      <div className="flex items-center border rounded-xs">
+                        <button
+                          onClick={() => handleDecreaseQuantity(item.id)}
+                          className="p-1.5 rounded-l-xs cursor-pointer"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <input
+                          type="text"
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, e)}
+                          onBlur={(e) => handleQuantityBlur(item.id, e)}
+                          className="w-12 text-center py-1 border-0 focus:ring-0 focus:outline-none"
+                          aria-label="Quantity"
+                        />
+                        <button
+                          onClick={() => handleIncreaseQuantity(item.id)}
+                          className="p-1.5 rounded-r-xs cursor-pointer"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Product Total */}
-                  <div className="font-bold text-base sm:text-lg">
-                    ${getProductTotal(item)}
+                  {/* Cases Quantity Control */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-2 text-sm font-medium pr-2">Cases:</span>
+                      <div className="flex items-center border rounded-xs">
+                        <button
+                          onClick={() => handleDecreaseCases(item.id)}
+                          className="p-1.5 rounded-l-xs cursor-pointer"
+                          aria-label="Decrease cases"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <input
+                          type="text"
+                          value={getCaseCount(item)}
+                          onChange={(e) => handleCaseChange(item.id, e)}
+                          onBlur={(e) => handleCaseBlur(item.id, e)}
+                          className="w-12 text-center py-1 border-0 focus:ring-0 focus:outline-none"
+                          aria-label="Cases"
+                        />
+                        <button
+                          onClick={() => handleIncreaseCases(item.id)}
+                          className="p-1.5 rounded-r-xs cursor-pointer"
+                          aria-label="Increase cases"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Product Total */}
+                    <div className="font-bold text-base sm:text-lg">
+                      <span className='text-gray-500 font-normal'>{getCaseCount(item)} case{getCaseCount(item) !== 1 ? 's' : ''}</span> - ${getProductTotal(item)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -171,7 +253,12 @@ const CartPage = () => {
             <div className="space-y-4">
               {cartItems.map(item => (
                 <div key={item.id} className="flex justify-between gap-8">
-                  <span>{item.description} <span className="text-gray-500 text-sm">x{item.quantity}</span></span>
+                  <span>
+                    {item.description}
+                    <span className="text-gray-500 text-sm ml-1">
+                      x{item.quantity} ({getCaseCount(item)} case{getCaseCount(item) !== 1 ? 's' : ''} + {getEachesCount(item)})
+                    </span>
+                  </span>
                   <div>
                     {/* Show original and discounted prices if applicable */}
                     {item.discount && item.discount > 0 ? (
@@ -185,19 +272,27 @@ const CartPage = () => {
                   </div>
                 </div>
               ))}
-
+              {/* Free Delivery Message */}
+              <div className="flex items-center text-green-600 py-2">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span className="font-medium">Free delivery on all orders</span>
+              </div>
               <div className="flex justify-between font-bold text-lg border-t border-t-gray-200 pt-4">
                 <span>Subtotal</span>
                 <span>${totalWithDiscount.toFixed(2)}</span>
               </div>
             </div>
-              {/* If the subtotal is less than 1500 dollars the user is not allowed to proceed because company only deals with large orders */}
+
+
+            {/* If the subtotal is less than 1500 dollars the user is not allowed to proceed because company only deals with large orders */}
             {totalWithDiscount <= 1500 && (
               <div className="text-red-500 text-sm mt-2">
                 <p>Note: Minimum order amount is $1500.</p>
                 <p>Please add more items to your cart.</p>
               </div>
-              )}
+            )}
 
             <Link
               to={totalWithDiscount > 1500 ? "/checkout" : "#"}

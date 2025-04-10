@@ -8,9 +8,7 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const hasChildren = category.children && category.children.length > 0;
 
-  // Check if current category is an ancestor of the selected category
-  // This should only return true if the selected category is a CHILD or deeper descendant
-  // NOT when the current category itself is selected
+
   const isAncestorOfSelected = useCallback(() => {
     if (!selectedCategory || category.id === selectedCategory) return false;
     
@@ -96,11 +94,12 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
 };
 
 const CategoryContainer = () => {
-  const { categories, fetchProducts, selectedCategory, setSelectedCategory } = useProductContext();
+  const { categories, fetchProducts, selectedCategory, setSelectedCategory, setSearchQuery } = useProductContext();
   const navigate = useNavigate();
 
   const handleAllProductsClick = () => {
     setSelectedCategory(null); // Clear selected category
+    setSearchQuery(''); // Clear search query
     navigate('/products');
   };
 

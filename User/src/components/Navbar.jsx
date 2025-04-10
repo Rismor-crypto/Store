@@ -1,23 +1,29 @@
 import React from 'react';
 import { ShoppingCart } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import { useCartContext } from '../context/CartContext';
+import { useProductContext } from '../context/ProductContext';
 
 const Navbar = () => {
   const { getTotalItems } = useCartContext();
+  const navigate = useNavigate();
+  const { setSearchQuery } = useProductContext();
 
   return (
     <nav className="bg-black text-white py-4 md:py-10 px-4 md:px-8">
       {/* Desktop Layout */}
       <div className="hidden md:flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center">
+        <div onClick={() => { 
+          setSearchQuery('');
+          navigate('/')
+           }} className="flex items-center cursor-pointer">
           <div className="text-2xl font-bold">
             <span className="text-red-500">Russel</span>
             <span className="text-red-500">co</span>
           </div>
-        </Link>
+        </div>
         
         {/* Search Bar */}
         <div className="flex-grow mx-4 max-w-3xl">
@@ -39,11 +45,15 @@ const Navbar = () => {
       {/* Mobile Layout */}
       <div className="md:hidden">
         <div className="flex justify-between items-center mt-4">
-          <Link to="/" className="text-2xl font-bold">
+        <div onClick={() => { 
+          setSearchQuery('');
+          navigate('/')
+           }} className="flex items-center cursor-pointer">
+          <div className="text-2xl font-bold">
             <span className="text-red-500">Russel</span>
-            <span className="text-white">co</span>
-          </Link>
-          
+            <span className="text-red-500">co</span>
+          </div>
+        </div>          
           <Link 
             to="/cart"
             className="relative cursor-pointer hover:text-red-500 transition"
