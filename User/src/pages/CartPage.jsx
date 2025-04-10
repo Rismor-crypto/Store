@@ -25,18 +25,29 @@ const CartPage = () => {
     }
   };
 
-  // Calculate discounted price for a product
+  const handleQuantityChange = (productId, event) => {
+    const value = event.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      const newQuantity = value === '' ? 1 : parseInt(value, 10);
+      updateQuantity(productId, newQuantity);
+    }
+  };
+
+  const handleQuantityBlur = (productId, event) => {
+    const value = event.target.value;
+    if (value === '' || parseInt(value, 10) < 1) {
+      updateQuantity(productId, 1);
+    }
+  };
+
   const getDiscountedPrice = (product) => {
-    // Check if discount exists and is greater than 0
     if (product.discount && product.discount > 0) {
       const discountAmount = product.price * (product.discount / 100);
       return (product.price - discountAmount).toFixed(2);
     }
-    // Return original price if no discount
     return product.price.toFixed(2);
   };
 
-  // Calculate individual product total with potential discount
   const getProductTotal = (product) => {
     const discountedPrice = parseFloat(getDiscountedPrice(product));
     return (discountedPrice * product.quantity).toFixed(2);
@@ -105,13 +116,14 @@ const CartPage = () => {
                           <span className="line-through">${item.price.toFixed(2)}</span>
                           <span className="text-blue-600">${getDiscountedPrice(item)}</span>
                           <span className="bg-blue-600 text-white px-2 py-0.5 rounded-xs text-xs">
-                            {item.discount}% OFF
+                          Save ${((item.discount * item.price)/100).toFixed(2)}
                           </span>
                         </div>
                       ) : (
                         <span>${item.price.toFixed(2)}</span>
                       )}
                     </div>
+                    <div className='text-gray-600 text-sm'>Case Pack: {item.case_pack}</div>
                   </div>
                 </div>
 
@@ -126,7 +138,14 @@ const CartPage = () => {
                     >
                       <Minus size={16} />
                     </button>
-                    <span className="px-3 py-1">{item.quantity}</span>
+                    <input
+                      type="text"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.id, e)}
+                      onBlur={(e) => handleQuantityBlur(item.id, e)}
+                      className="w-12 text-center py-1 border-0 focus:ring-0 focus:outline-none"
+                      aria-label="Quantity"
+                    />
                     <button
                       onClick={() => handleIncreaseQuantity(item.id)}
                       className="p-1.5 hover:bg-gray-100 rounded-r-xs cursor-pointer"
@@ -151,7 +170,7 @@ const CartPage = () => {
 
             <div className="space-y-4">
               {cartItems.map(item => (
-                <div key={item.id} className="flex justify-between">
+                <div key={item.id} className="flex justify-between gap-8">
                   <span>{item.description} <span className="text-gray-500 text-sm">x{item.quantity}</span></span>
                   <div>
                     {/* Show original and discounted prices if applicable */}
@@ -172,10 +191,17 @@ const CartPage = () => {
                 <span>${totalWithDiscount.toFixed(2)}</span>
               </div>
             </div>
+              {/* If the subtotal is less than 1500 dollars the user is not allowed to proceed because company only deals with large orders */}
+            {totalWithDiscount <= 1500 && (
+              <div className="text-red-500 text-sm mt-2">
+                <p>Note: Minimum order amount is $1500.</p>
+                <p>Please add more items to your cart.</p>
+              </div>
+              )}
 
             <Link
-              to="/checkout"
-              className="w-full bg-red-500 text-white py-3 rounded-xs mt-6 block text-center hover:bg-red-600 transition"
+              to={totalWithDiscount > 1500 ? "/checkout" : "#"}
+              className={`w-full py-3 rounded-xs mt-6 block text-center transition ${totalWithDiscount > 1500 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
             >
               Proceed to Checkout
             </Link>

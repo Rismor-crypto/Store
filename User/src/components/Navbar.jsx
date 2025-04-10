@@ -1,10 +1,8 @@
-// src/components/Navbar.jsx
 import React from 'react';
 import { ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SearchBar from './SearchBar';
 import { useCartContext } from '../context/CartContext';
-import { useProductContext } from '../context/ProductContext';
 
 const Navbar = () => {
   const { getTotalItems } = useCartContext();
@@ -32,7 +30,7 @@ const Navbar = () => {
           className="relative cursor-pointer hover:text-red-500 transition"
         >
           <ShoppingCart size={28} />
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs min-w-5 h-5 flex items-center justify-center px-1">
             {getTotalItems()}
           </span>
         </Link>
@@ -51,7 +49,7 @@ const Navbar = () => {
             className="relative cursor-pointer hover:text-red-500 transition"
           >
             <ShoppingCart size={28} />
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs min-w-5 h-5 flex items-center justify-center px-1">
               {getTotalItems()}
             </span>
           </Link>

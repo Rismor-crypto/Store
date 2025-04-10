@@ -1,11 +1,20 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ShoppingBag, FolderTree, ChevronRight, LogOut } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext'; // Make sure this path is correct
+import { 
+  LayoutDashboard, 
+  ShoppingBag, 
+  FolderTree, 
+  ChevronRight, 
+  LogOut,
+  ShoppingCart
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useOrderContext } from '../../context/OrderContext';
 
 const Sidebar = () => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { activeCounts } = useOrderContext();
 
   const handleLogout = async () => {
     const { success } = await signOut();
@@ -90,6 +99,34 @@ const Sidebar = () => {
               className="mr-3 transition-transform group-hover:scale-110" 
             />
             <span>Categories</span>
+          </div>
+          <ChevronRight 
+            size={16} 
+            className="opacity-0 group-hover:opacity-100 transition-opacity" 
+          />
+        </NavLink>
+
+        <NavLink
+          to="/orders"
+          className={({ isActive }) => `
+            group flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200
+            ${isActive 
+              ? "bg-blue-50 text-blue-600 font-semibold" 
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-800"
+            }
+          `}
+        >
+          <div className="flex items-center">
+            <ShoppingCart 
+              size={20} 
+              className="mr-3 transition-transform group-hover:scale-110" 
+            />
+            <span>Orders</span>
+            {activeCounts && activeCounts.pending > 0 && (
+              <span className="ml-2 bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                {activeCounts.pending}
+              </span>
+            )}
           </div>
           <ChevronRight 
             size={16} 

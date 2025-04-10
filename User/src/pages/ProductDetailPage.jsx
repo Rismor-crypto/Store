@@ -122,7 +122,7 @@ const ProductDetailPage = () => {
 
               {product.discount > 0 && (
                 <div className="bg-blue-700 text-white text-xs px-2 py-1 rounded">
-                  {product.discount}% OFF
+                  Save ${((product.discount * product.price)/100).toFixed(2)}
                 </div>
               )}
             </div>

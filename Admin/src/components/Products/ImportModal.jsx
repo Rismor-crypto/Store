@@ -12,11 +12,11 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
   if (!isOpen) return null;
 
   const handleFileChange = (e) => {
-    e.stopPropagation(); // Prevent event bubbling
+    e.stopPropagation();
 
     if (e.target.files && e.target.files[0]) {
       setCsvFile(e.target.files[0]);
-      setImportError(null); // Clear any previous errors
+      setImportError(null); 
     }
   };
 
@@ -38,7 +38,6 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      // Check if the file is a CSV
       if (file.type === "text/csv" || file.name.endsWith('.csv')) {
         setCsvFile(file);
         setImportError(null);
@@ -49,7 +48,6 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
   };
 
   const handleContainerClick = (e) => {
-    // Only open file dialog if no file is selected yet
     if (!csvFile) {
       fileInputRef.current.click();
     }
@@ -68,7 +66,6 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
       const stats = await onImport(csvFile);
       setImportStats(stats);
       
-      // Clear the file selection on success
       if (stats.errors === 0) {
         setCsvFile(null);
       }
@@ -140,7 +137,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                 <label
                   htmlFor="file-upload"
                   className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
-                  onClick={(e) => e.stopPropagation()} // Prevent triggering container's onClick
+                  onClick={(e) => e.stopPropagation()} 
                 >
                   <span>{csvFile ? "Change file" : "Upload a file"}</span>
                   <input
@@ -151,7 +148,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                     className="sr-only"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    onClick={(e) => e.stopPropagation()} // Extra protection against bubbling
+                    onClick={(e) => e.stopPropagation()} 
                   />
                 </label>
                 {!csvFile && <p className="pl-1">or drag and drop</p>}

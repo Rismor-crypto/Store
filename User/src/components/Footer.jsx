@@ -23,18 +23,23 @@ const Footer = () => {
 
                 {/* Contact Info Section */}
                 <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6 text-center">
-                    <div className="flex items-center">
+                    <a href="tel:+17328603187" className="flex items-center cursor-pointer">
                         <Phone size={20} className="mr-2 text-red-500" />
-                        <span>1 (732) 860-3187</span>
-                    </div>
-                    <div className="flex items-center">
+                        <span>+1 (732) 860-3187</span>
+                    </a>
+                    <a href="mailto:Russelcoinc@aol.com" className="flex items-center cursor-pointer">
                         <Mail size={20} className="mr-2 text-red-500" />
                         <span>Russelcoinc@aol.com</span>
-                    </div>
-                    <div className="flex items-center">
+                    </a>
+                    <a
+                        href="https://www.google.com/maps?q=106+Melrich+Rd,+Cranbury+NJ,+08512"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center cursor-pointer"
+                    >
                         <MapPin size={20} className="mr-2 text-red-500" />
                         <span>106 Melrich Rd , Cranbury NJ , 08512</span>
-                    </div>
+                    </a>
                 </div>
 
                 {/* Copyright Section */}

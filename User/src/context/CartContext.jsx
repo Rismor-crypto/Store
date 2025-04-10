@@ -53,7 +53,6 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // New method to clear the entire cart
   const clearCart = () => {
     setCartItems([]);
   };
@@ -68,14 +67,11 @@ export const CartProvider = ({ children }) => {
     }, 0);
   
     const totalWithDiscount = cartItems.reduce((total, item) => {
-      // Check if the item has a discount
       if (item.discount && item.discount > 0) {
-        // Calculate discounted price if discount exists
         const discountAmount = item.price * (item.discount / 100);
         const discountedPrice = item.price - discountAmount;
         return total + (discountedPrice * (item.quantity || 1));
       } else {
-        // Use original price if no discount
         return total + (item.price * (item.quantity || 1));
       }
     }, 0);

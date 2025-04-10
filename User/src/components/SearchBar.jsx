@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, PackageX } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Loader2, PackageX, Search } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import supabase from '../utils/supabase';
+import { useProductContext } from '../context/ProductContext';
 
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,6 +11,8 @@ const SearchBar = () => {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const searchRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { fetchProducts, setSearchQuery } = useProductContext();
 
   // Debounce search to reduce unnecessary API calls
   useEffect(() => {
@@ -66,6 +69,26 @@ const SearchBar = () => {
     setIsDropdownVisible(false);
   };
 
+  const handleViewAllProducts = () => {
+    // Set the search query in context directly
+    setSearchQuery(searchTerm);
+    
+    // Close the dropdown
+    setIsDropdownVisible(false);
+    
+    // If we're already on the home page, use a URL param to force a refresh
+    if (location.pathname === '/' || location.pathname === '/products') {
+      // Use search params to force refresh
+      navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+    } else {
+      // Otherwise navigate to home with search params
+      navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+    }
+    
+    // Clear the search input
+    setSearchTerm('');
+  };
+
   return (
     <div className="relative w-full" ref={searchRef}>
       <div className="relative flex items-center bg-white rounded-xs overflow-hidden">
@@ -93,25 +116,36 @@ const SearchBar = () => {
       {isDropdownVisible && (
         <div className="absolute z-10 w-full bg-white border rounded-xs shadow-lg mt-1 max-h-96 overflow-y-auto">
           {productSuggestions.length > 0 && searchTerm ? (
-            productSuggestions.map((product) => (
-              <div 
-                key={product.id} 
-                className="p-2 flex items-center hover:bg-gray-100 cursor-pointer"
-                onClick={() => handleProductSelect(product.id)}
-              >
-                <img 
-                  src={product.image_url || '/api/placeholder/50/50'} 
-                  alt={product.description} 
-                  className="w-12 h-12 object-cover mr-4 rounded"
-                />
-                <div>
-                  <p className="text-black font-semibold truncate w-full max-w-[300px]">
-                    {product.description}
-                  </p>
-                  <p className="text-green-600 font-bold">${product.price.toFixed(2)}</p>
+            <>
+              {productSuggestions.map((product) => (
+                <div 
+                  key={product.id} 
+                  className="p-2 flex items-center hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleProductSelect(product.id)}
+                >
+                  <img 
+                    src={product.image_url || '/api/placeholder/50/50'} 
+                    alt={product.description} 
+                    className="w-12 h-12 object-cover mr-4 rounded"
+                  />
+                  <div>
+                    <p className="text-black font-semibold truncate w-full max-w-[300px]">
+                      {product.description}
+                    </p>
+                    <p className="text-green-600 font-bold">${product.price.toFixed(2)}</p>
+                  </div>
                 </div>
+              ))}
+              
+              {/* View All Products Button */}
+              <div 
+                className="p-3 border-t flex items-center justify-center text-red-600 hover:bg-gray-100 cursor-pointer font-medium"
+                onClick={handleViewAllProducts}
+              >
+                <Search className="mr-2" size={18} />
+                <span>View all products for "{searchTerm}"</span>
               </div>
-            ))
+            </>
           ) : (
             <div className="p-4 flex items-center justify-center text-gray-500">
               <PackageX className="mr-2" />

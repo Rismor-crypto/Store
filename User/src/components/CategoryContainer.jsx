@@ -9,31 +9,42 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
   const hasChildren = category.children && category.children.length > 0;
 
   // Check if current category is an ancestor of the selected category
+  // This should only return true if the selected category is a CHILD or deeper descendant
+  // NOT when the current category itself is selected
   const isAncestorOfSelected = useCallback(() => {
+    if (!selectedCategory || category.id === selectedCategory) return false;
+    
     const checkDescendants = (currentCategory) => {
-      if (currentCategory.id === selectedCategory) return true;
-      if (currentCategory.children) {
-        return currentCategory.children.some(child => checkDescendants(child));
+      if (!currentCategory.children) return false;
+      
+      // Check direct children
+      if (currentCategory.children.some(child => child.id === selectedCategory)) {
+        return true;
       }
-      return false;
+      
+      // Check deeper descendants
+      return currentCategory.children.some(child => checkDescendants(child));
     };
+    
     return checkDescendants(category);
   }, [selectedCategory, category]);
 
-  // Auto-expand if selected category is a descendant
+  // Auto-expand if selected category is a descendant (but not self)
   useEffect(() => {
     if (selectedCategory && isAncestorOfSelected()) {
       setIsExpanded(true);
     }
   }, [selectedCategory, isAncestorOfSelected]);
 
-  const handleCategoryClick = () => {
-    if (hasChildren) {
-      setIsExpanded(!isExpanded);
-    } else {
-      // Navigate using category ID instead of slug
-      navigate(`/products/category/${category.id}`);
-    }
+  const handleCategoryClick = (e) => {
+    // Navigate using category ID
+    navigate(`/products/category/${category.id}`);
+  };
+
+  const handleChevronClick = (e) => {
+    // Stop event propagation to prevent navigation
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
   };
 
   return (
@@ -52,7 +63,10 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
           {category.name}
         </span>
         {hasChildren && (
-          <div className="transition-transform duration-300 ease-in-out">
+          <div 
+            onClick={handleChevronClick} 
+            className="transition-transform duration-300 ease-in-out"
+          >
             {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
           </div>
         )}

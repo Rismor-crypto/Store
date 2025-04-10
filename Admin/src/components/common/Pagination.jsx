@@ -29,7 +29,7 @@ const Pagination = ({
         className={`px-3 py-1 rounded-md ${
           currentPage === 1 
             ? "bg-blue-600 text-white" 
-            : "bg-white text-gray-700 hover:bg-gray-100"
+            : "bg-white text-gray-700 hover:bg-gray-100 cursor-pointer"
         }`}
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1}
@@ -59,7 +59,7 @@ const Pagination = ({
           className={`px-3 py-1 rounded-md ${
             currentPage === i 
               ? "bg-blue-600 text-white" 
-              : "bg-white text-gray-700 hover:bg-gray-100"
+              : "bg-white text-gray-700 hover:bg-gray-100 cursor-pointer"
           }`}
           onClick={() => onPageChange(i)}
         >
@@ -85,7 +85,7 @@ const Pagination = ({
           className={`px-3 py-1 rounded-md ${
             currentPage === totalPages 
               ? "bg-blue-600 text-white" 
-              : "bg-white text-gray-700 hover:bg-gray-100"
+              : "bg-white text-gray-700 hover:bg-gray-100 cursor-pointer"
           }`}
           onClick={() => onPageChange(totalPages)}
           disabled={currentPage === totalPages}
@@ -111,7 +111,7 @@ const Pagination = ({
           className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
             currentPage === 1
               ? "bg-gray-100 text-gray-400"
-              : "bg-white text-gray-700 hover:bg-gray-50"
+              : "bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
           }`}
         >
           Previous
@@ -125,7 +125,7 @@ const Pagination = ({
           className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
             currentPage === totalPages
               ? "bg-gray-100 text-gray-400"
-              : "bg-white text-gray-700 hover:bg-gray-50"
+              : "bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
           }`}
         >
           Next
@@ -166,7 +166,7 @@ const Pagination = ({
               className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
                 currentPage === 1
                   ? "text-gray-300"
-                  : "text-gray-500 hover:bg-gray-50"
+                  : "text-gray-500 hover:bg-gray-50 cursor-pointer"
               }`}
             >
               <span className="sr-only">First</span>
@@ -179,7 +179,7 @@ const Pagination = ({
               className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
                 currentPage === 1
                   ? "text-gray-300"
-                  : "text-gray-500 hover:bg-gray-50"
+                  : "text-gray-500 hover:bg-gray-50 cursor-pointer"
               }`}
             >
               <span className="sr-only">Previous</span>
@@ -197,7 +197,7 @@ const Pagination = ({
               className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
                 currentPage === totalPages
                   ? "text-gray-300"
-                  : "text-gray-500 hover:bg-gray-50"
+                  : "text-gray-500 hover:bg-gray-50 cursor-pointer"
               }`}
             >
               <span className="sr-only">Next</span>
@@ -210,7 +210,7 @@ const Pagination = ({
               className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
                 currentPage === totalPages
                   ? "text-gray-300"
-                  : "text-gray-500 hover:bg-gray-50"
+                  : "text-gray-500 hover:bg-gray-50 cursor-pointer"
               }`}
             >
               <span className="sr-only">Last</span>

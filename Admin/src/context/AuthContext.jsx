@@ -69,7 +69,6 @@ export function AuthProvider({ children }) {
                 return { success: false, error: 'Unauthorized email. Only admin emails are allowed.' };
             }
 
-            // If email exists in admin table, proceed with magic link
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {

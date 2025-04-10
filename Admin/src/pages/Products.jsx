@@ -11,7 +11,7 @@ import ProductsTable from "../components/Products/ProductsTable";
 import Notification from "../components/common/Notification";
 import ImportModal from "../components/Products/ImportModal";
 import ConfirmationModal from "../components/common/ConfirmationModal";
-import Pagination from "../components/Products/Pagination";
+import Pagination from "../components/common/Pagination";
 
 const ProductsPage = () => {
   const { 

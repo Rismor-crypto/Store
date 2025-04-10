@@ -1,7 +1,19 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useProductContext } from '../context/ProductContext';
-import { Package, Layers, PlusCircle, FolderTree, RefreshCw, Loader } from 'lucide-react';
+import { useOrderContext } from '../context/OrderContext';
+import { 
+  Package, 
+  Layers, 
+  PlusCircle, 
+  FolderTree, 
+  RefreshCw, 
+  Loader,
+  ShoppingCart,
+  Clock,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
 import supabase from '../utils/supabase';
 
 function Dashboard() {
@@ -11,6 +23,13 @@ function Dashboard() {
     fetchProducts,
     totalProducts,
   } = useProductContext();
+
+  const {
+    orders,
+    loading: ordersLoading,
+    activeCounts,
+    fetchOrders
+  } = useOrderContext();
   
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -22,7 +41,7 @@ function Dashboard() {
   });
 
   // Determine if anything is loading
-  const isLoading = productsLoading || categoriesLoading;
+  const isLoading = productsLoading || categoriesLoading || ordersLoading;
 
   // Fetch categories
   useEffect(() => {
@@ -74,8 +93,19 @@ function Dashboard() {
     }
   }, [products]);
 
+  // Get recent orders
+  const recentOrders = orders.slice(0, 5);
+
   const refreshData = () => {
     fetchProducts();
+    fetchOrders(); // Also refresh orders data
+  };
+
+  // Order status color mappings
+  const statusColors = {
+    pending: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+    completed: { bg: 'bg-green-100', text: 'text-green-800' },
+    cancelled: { bg: 'bg-red-100', text: 'text-red-800' }
   };
 
   // Overall loading screen
@@ -106,7 +136,50 @@ function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Order Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow p-6 flex items-center">
+          <div className="p-3 rounded-full bg-blue-100 mr-4">
+            <ShoppingCart className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Total Orders</p>
+            <p className="text-2xl font-bold text-gray-800">{activeCounts.total}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center">
+          <div className="p-3 rounded-full bg-yellow-100 mr-4">
+            <Clock className="h-6 w-6 text-yellow-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Pending</p>
+            <p className="text-2xl font-bold text-gray-800">{activeCounts.pending}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6 flex items-center">
+          <div className="p-3 rounded-full bg-green-100 mr-4">
+            <CheckCircle className="h-6 w-6 text-green-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Completed</p>
+            <p className="text-2xl font-bold text-gray-800">{activeCounts.completed}</p>
+          </div>
+        </div>
+
+        {/* <div className="bg-white rounded-lg shadow p-6 flex items-center">
+          <div className="p-3 rounded-full bg-red-100 mr-4">
+            <XCircle className="h-6 w-6 text-red-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-500">Cancelled</p>
+            <p className="text-2xl font-bold text-gray-800">{activeCounts.cancelled}</p>
+          </div>
+        </div> */}
+      </div>
+
+      {/* Product Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow p-6 flex items-center">
           <div className="p-3 rounded-full bg-blue-100 mr-4">
@@ -142,7 +215,7 @@ function Dashboard() {
       {/* Quick Actions */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-medium text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Link 
             to="/products/add" 
             className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -166,7 +239,70 @@ function Dashboard() {
             <Layers className="h-5 w-5 text-purple-600 mr-3" />
             <span className="font-medium text-purple-700">Manage Categories</span>
           </Link>
+
+          <Link 
+            to="/orders" 
+            className="flex items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+          >
+            <ShoppingCart className="h-5 w-5 text-yellow-600 mr-3" />
+            <span className="font-medium text-yellow-700">Manage Orders</span>
+          </Link>
         </div>
+      </div>
+
+      {/* Recent Orders */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-medium text-gray-800 mb-4">Recent Orders</h2>
+        {recentOrders && recentOrders.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {recentOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link to={`/orders/${order.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
+                        #{order.order_number}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{order.customer_first_name} {order.customer_last_name}</div>
+                      <div className="text-sm text-gray-500">{order.customer_email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(order.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      ${parseFloat(order.total_amount).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        statusColors[order.status]?.bg || 'bg-gray-100'} ${statusColors[order.status]?.text || 'text-gray-800'
+                      }`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="mt-4 text-right">
+              <Link to="/orders" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                View all orders →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500">No recent orders found.</p>
+        )}
       </div>
 
       {/* Recent Products */}

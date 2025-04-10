@@ -21,7 +21,7 @@ const ScrollToTop = () => {
 
 function App() {
   return (
-    <Router>
+    <Router className="">
       <ScrollToTop />
       <ProductProvider>
         <CartProvider>

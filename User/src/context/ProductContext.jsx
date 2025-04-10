@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import supabase from '../utils/supabase';
 
 const ProductContext = createContext();
@@ -18,6 +18,10 @@ export const ProductProvider = ({ children }) => {
   const [isCatLoading, setIsCatLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Use ref to track the latest fetch call to prevent race conditions
+  const lastFetchId = useRef(0);
 
   // Fetch and sort products
   const fetchCategories = useCallback(async () => {
@@ -53,18 +57,37 @@ export const ProductProvider = ({ children }) => {
     page = 1, 
     pageSize = 40, 
     categoryId = null, 
-    filter = null, 
-    sort = 'relevance'
+    sort = null, 
+    filter = null,
+    search = null
   ) => {
     setIsLoading(true);
     setError(null);
+    
+    // Generate unique ID for this fetch request to handle race conditions
+    const fetchId = ++lastFetchId.current;
   
     try {
-      const effectiveCategoryId = categoryId || selectedCategory;
+      const effectiveCategoryId = categoryId !== undefined ? categoryId : selectedCategory;
+      const effectiveSearch = search !== undefined ? search : searchQuery;
+      const effectiveSort = sort || sortOption;
   
       const getAllDescendantCategories = (categoryId) => {
+        if (!categoryId) return [];
+        
         const findDescendants = (catId) => {
-          const category = categories.find(c => c.id === catId);
+          const findCategory = (cats, id) => {
+            for (const cat of cats) {
+              if (cat.id === id) return cat;
+              if (cat.children && cat.children.length > 0) {
+                const found = findCategory(cat.children, id);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+          
+          const category = findCategory(categories, catId);
           if (!category) return [catId];
           
           const descendants = [catId];
@@ -83,22 +106,28 @@ export const ProductProvider = ({ children }) => {
       let query = supabase
         .from('products')
         .select('*', { count: 'exact' })
-        .eq('status', true)
-        .range((page - 1) * pageSize, page * pageSize - 1);
+        .eq('status', true);
       
       // Apply category filtering
       if (effectiveCategoryId) {
         const descendantCategories = getAllDescendantCategories(effectiveCategoryId);
-        query = query.in('category', descendantCategories);
+        if (descendantCategories.length > 0) {
+          query = query.in('category', descendantCategories);
+        }
       }
 
       // Apply discount filtering
       if (filter === 'discount') {
         query = query.gt('discount', 0);
       }
+      
+      // Apply search filtering - this is important
+      if (effectiveSearch && effectiveSearch.trim() !== '') {
+        query = query.or(`description.ilike.%${effectiveSearch}%,upc.ilike.%${effectiveSearch}%`);
+      }
   
       // Apply sorting
-      switch(sort) {
+      switch(effectiveSort) {
         case 'price-low':
           query = query.order('price', { ascending: true });
           break;
@@ -111,36 +140,51 @@ export const ProductProvider = ({ children }) => {
         default:
           query = query.order('created_at', { ascending: false });
       }
+      
+      // Apply pagination last
+      query = query.range((page - 1) * pageSize, page * pageSize - 1);
   
       const { data, count, error } = await query;
   
       if (error) throw error;
-  
-      if (data) {
+      
+      // Only update state if this is still the most recent fetch
+      if (fetchId === lastFetchId.current && data) {
         setProducts(data);
         setPagination({
           page,
           pageSize,
           totalProducts: count || 0
         });
-        setSortOption(sort);
+        setSortOption(effectiveSort);
         
         // Preserve the selected category when changing pages
-        if (effectiveCategoryId) {
-          setSelectedCategory(effectiveCategoryId);
+        if (categoryId !== null && categoryId !== undefined) {
+          setSelectedCategory(categoryId);
+        }
+        
+        // Update search state if explicitly passed
+        if (search !== null && search !== undefined) {
+          setSearchQuery(search);
         }
       }
     } catch (err) {
       console.error('Error fetching products:', err);
-      setError({
-        message: 'Failed to load products',
-        details: err.message
-      });
-      setProducts([]);
+      // Only update error state if this is still the most recent fetch
+      if (fetchId === lastFetchId.current) {
+        setError({
+          message: 'Failed to load products',
+          details: err.message
+        });
+        setProducts([]);
+      }
     } finally {
-      setIsLoading(false);
+      // Only update loading state if this is still the most recent fetch
+      if (fetchId === lastFetchId.current) {
+        setIsLoading(false);
+      }
     }
-  }, [categories, selectedCategory]);
+  }, [categories, selectedCategory, searchQuery, sortOption]);
 
   // Helper to organize categories into a tree
   const organizeCategories = (categories) => {
@@ -175,7 +219,8 @@ export const ProductProvider = ({ children }) => {
   // Initial fetch effect
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
+  
   return (
     <ProductContext.Provider value={{
       categories,
@@ -185,13 +230,16 @@ export const ProductProvider = ({ children }) => {
       viewMode,
       setViewMode,
       sortOption,
+      setSortOption,
       fetchProducts,
       isLoading,
       isCatLoading,
       error,
       selectedCategory,
       setSelectedCategory,
-      clearError
+      clearError,
+      searchQuery,
+      setSearchQuery
     }}>
       {children}
     </ProductContext.Provider>

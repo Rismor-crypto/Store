@@ -3,7 +3,6 @@ import { useProductContext } from '../context/ProductContext';
 import ProductCard from './ProductCard';
 import Pagination from './Pagination';
 import ProductHeader from './ProductHeader';
-import { Loader2 } from 'lucide-react';
 
 const ProductGrid = () => {
   const { products, viewMode, categories, selectedCategory, isLoading } = useProductContext();

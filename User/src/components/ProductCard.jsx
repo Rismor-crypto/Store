@@ -27,6 +27,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     return (
       <div className="flex items-center border border-gray-200 p-2 md:p-4 cursor-pointer"
       onClick={() => navigate(`/products/${product.id}`)}
+      title={product.description}
       >
         <div className="w-24 h-24 mr-6 relative">
           <img
@@ -36,7 +37,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           />
           {product.discount > 0 && (
             <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-2 py-1">
-              Save {product.discount}%
+              Save ${((product.discount * product.price)/100).toFixed(2)}
             </div>
           )}
         </div>
@@ -100,10 +101,11 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   return (
     <div className=" relative border border-gray-200 p-2 md:p-4 cursor-pointer rounded-xs"
     onClick={() => navigate(`/products/${product.id}`)}
+    title={product.description}
     >
               {product.discount > 0 && (
           <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
-            Save {product.discount}%
+            Save ${((product.discount * product.price)/100).toFixed(2)}
           </div>
         )}
       <div className="relative mb-4">

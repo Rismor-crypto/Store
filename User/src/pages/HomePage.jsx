@@ -1,57 +1,11 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { useParams, useLocation, Link } from 'react-router-dom';
+import { useParams, useLocation, useSearchParams } from 'react-router-dom';
 import CategoryContainer from '../components/CategoryContainer';
 import ProductGrid from '../components/ProductGrid';
 import FilterModal from '../components/FilterModal';
 import { useProductContext } from '../context/ProductContext';
-import { Loader2, Tag } from 'lucide-react';
-import { ArrowRight } from 'lucide-react';
-
-const SpecialOffersSection = () => {
-  const { products } = useProductContext();
-  const specialOffers = products.filter(product => product.discount > 0);
-
-  return (
-    <div className="bg-red-400 text-white py-6 md:py-8 shadow-lg mb-8 rounded-xs">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-          {/* Left Section with Icon and Title */}
-          <div className="flex items-center space-x-4">
-            <div className="bg-white/20 p-3 rounded-full">
-              <Tag className="text-white" size={32} />
-            </div>
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-                Exclusive Special Offers
-              </h2>
-              <p className="text-sm md:text-base text-white/80 mt-1">
-                Limited time deals you won't want to miss!
-              </p>
-            </div>
-          </div>
-
-          {/* Right Section with CTA and Countdown */}
-          <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-6">
-
-
-            <Link 
-              to="/offers" 
-              className="flex items-center justify-center space-x-2 
-                         bg-white text-red-600 px-6 py-3 
-                         rounded-full font-semibold 
-                         hover:bg-gray-100 transition 
-                         transform hover:-translate-y-1 
-                         shadow-lg hover:shadow-xl"
-            >
-              <span>View All Offers</span>
-              <ArrowRight size={20} />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { Loader2, Search, X } from 'lucide-react';
+import SpecialOffersSection from '../components/SpecialOfferSection';
 
 const HomePage = () => {
   const { 
@@ -60,11 +14,16 @@ const HomePage = () => {
     fetchProducts, 
     selectedCategory, 
     isCatLoading, 
-    setSelectedCategory 
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    sortOption
   } = useProductContext();
   const { categoryId } = useParams();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showSpecialOffers, setShowSpecialOffers] = useState(true);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   const findCategoryById = useCallback((categories, targetId) => {
     for (let category of categories) {
@@ -83,35 +42,71 @@ const HomePage = () => {
     return null;
   }, []);
 
+  // Process URL search parameters only once when component mounts
   useEffect(() => {
+    const urlSearchTerm = searchParams.get('search');
+    if (urlSearchTerm) {
+      setSearchQuery(decodeURIComponent(urlSearchTerm));
+    }
+  }, [searchParams, setSearchQuery]);
+
+  // Main effect for fetching products with correct parameters
+  useEffect(() => {
+    if (!categories.length) return; // Wait for categories to load
+
     // Determine if we're on the offers page
     const isOffersPage = location.pathname === '/offers';
-    setShowSpecialOffers(!isOffersPage);
+    setShowSpecialOffers(!isOffersPage && !searchQuery);
 
-    if (categories.length > 0) {
-      let fetchParams = { page: 1, pageSize: 40 };
+    let fetchParams = { 
+      page: 1, 
+      pageSize: 40,
+      sort: sortOption,
+      filter: isOffersPage ? 'discount' : null
+    };
 
-      if (isOffersPage) {
-        // Fetch only products with discounts
-        fetchParams.filter = 'discount';
-      } else if (categoryId || selectedCategory) {
-        const foundCategory = findCategoryById(categories, categoryId || selectedCategory);
-        
-        if (foundCategory) {
-          fetchParams.categoryId = foundCategory.id;
-        }
+    // Only set category ID if valid
+    if (categoryId || selectedCategory) {
+      const targetCategoryId = categoryId || selectedCategory;
+      const foundCategory = findCategoryById(categories, targetCategoryId);
+      
+      if (foundCategory) {
+        fetchParams.categoryId = foundCategory.id;
       }
-
+    }
+    
+    // Use a timeout to ensure state changes have settled
+    const timer = setTimeout(() => {
+      
       fetchProducts(
         fetchParams.page, 
         fetchParams.pageSize, 
         fetchParams.categoryId, 
-        fetchParams.filter
+        fetchParams.sort,
+        fetchParams.filter,
+        searchQuery // Always include current search query
       );
-    }
-  }, [categories, categoryId, location.pathname]);
+      
+      setInitialFetchDone(true);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [
+    categories, 
+    categoryId, 
+    location.pathname, 
+    searchQuery, 
+    fetchProducts, 
+    findCategoryById, 
+    selectedCategory, 
+    sortOption
+  ]);
   
-  if (isLoading || isCatLoading) {
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  if ((isLoading || isCatLoading) && !initialFetchDone) {
     return (
       <div className="flex justify-center items-center h-screen -mt-20">
         <Loader2 className="animate-spin text-red-500" size={48} />
@@ -120,7 +115,7 @@ const HomePage = () => {
   }
 
   return (
-    <main>
+    <main className='font-noto'>
       <div className="mx-auto px-4 py-6">
         
         <FilterModal />
@@ -131,7 +126,22 @@ const HomePage = () => {
           </div>
           
           <div className="w-full md:w-3/4">
-        {showSpecialOffers && <SpecialOffersSection />}
+          {searchQuery && (
+          <div className="mb-6 p-3 bg-gray-100 rounded flex items-center justify-between">
+            <div className="flex items-center">
+              <Search className="mr-2 text-red-600" size={20} />
+              <span className="font-medium">Search results for: "{searchQuery}"</span>
+            </div>
+            <button 
+              onClick={clearSearch}
+              className="flex items-center text-gray-600 hover:text-red-600"
+            >
+              <X size={18} className="mr-1" />
+              <span>Clear</span>
+            </button>
+          </div>
+        )}
+            {showSpecialOffers && <SpecialOffersSection />}
             <ProductGrid />
           </div>
         </div>

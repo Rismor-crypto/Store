@@ -8,7 +8,9 @@ const ProductHeader = () => {
       fetchProducts, 
       viewMode, 
       setViewMode, 
-      sortOption 
+      sortOption,
+      selectedCategory,
+      searchQuery 
     } = useProductContext();
   
     const handleSortChange = (e) => {
@@ -16,8 +18,10 @@ const ProductHeader = () => {
       fetchProducts(
         pagination.page, 
         pagination.pageSize, 
-        null, 
-        selectedSort
+        selectedCategory, 
+        selectedSort, 
+        null,
+        searchQuery 
       );
     };
   
@@ -26,8 +30,10 @@ const ProductHeader = () => {
       fetchProducts(
         1, 
         selectedPageSize, 
-        null, 
-        sortOption
+        selectedCategory, 
+        sortOption,
+        null,
+        searchQuery
       );
     };
   
@@ -36,7 +42,7 @@ const ProductHeader = () => {
         {/* Product Count */}
         <div className="hidden md:block w-full md:w-auto text-center md:text-left mb-4 md:mb-0">
           <span className="text-sm text-gray-600 block">
-            Showing {(pagination.page - 1) * pagination.pageSize + 1} -  {' '}
+            Showing {pagination.totalProducts ? (pagination.page - 1) * pagination.pageSize + 1 : 0} -  {' '}
             {Math.min(pagination.page * pagination.pageSize, pagination.totalProducts)} {' '}
             of {pagination.totalProducts} items
           </span>
@@ -89,4 +95,4 @@ const ProductHeader = () => {
     );
   };
 
-  export default ProductHeader;
+export default ProductHeader;

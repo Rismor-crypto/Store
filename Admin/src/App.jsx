@@ -1,11 +1,13 @@
-// Updated App.js
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/common/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Categories from './pages/Categories';
+import Orders from './pages/OrdersPage';
+import OrderDetails from './components/orders/OrderDetails';
 import { ProductProvider } from './context/ProductContext';
+import { OrderProvider } from './context/OrderContext';
 import AddProductPage from './pages/AddProductPage';
 import LoginPage from './pages/Login';
 import AuthCallback from './pages/AuthCallBack';
@@ -32,21 +34,25 @@ function App() {
             path="/*"
             element={
               <ProtectedRoute>
-                <div className="flex">
-                  <ProductProvider>
-                    <Sidebar />
-                    <main className="ml-64 p-6 w-full min-h-screen bg-gray-50">
-                      <Routes>
-                        <Route path="dashboard" element={<Dashboard />} />
-                        <Route path="products" element={<Products />} />
-                        <Route path="categories" element={<Categories />} />
-                        <Route path="products/add" element={<AddProductPage />} />
-                        <Route path="products/edit/:id" element={<AddProductPage />} />
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                      </Routes>
-                    </main>
-                  </ProductProvider>
-                </div>
+                <ProductProvider>
+                  <OrderProvider>
+                    <div className="flex">
+                      <Sidebar />
+                      <main className="ml-64 p-6 w-full min-h-screen bg-gray-50">
+                        <Routes>
+                          <Route path="dashboard" element={<Dashboard />} />
+                          <Route path="products" element={<Products />} />
+                          <Route path="products/add" element={<AddProductPage />} />
+                          <Route path="products/edit/:id" element={<AddProductPage />} />
+                          <Route path="categories" element={<Categories />} />
+                          <Route path="orders" element={<Orders />} />
+                          <Route path="orders/:id" element={<OrderDetails />} />
+                          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        </Routes>
+                      </main>
+                    </div>
+                  </OrderProvider>
+                </ProductProvider>
               </ProtectedRoute>
             }
           />
