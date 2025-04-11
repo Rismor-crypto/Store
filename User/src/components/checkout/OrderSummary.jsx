@@ -1,6 +1,38 @@
 import React from "react";
 
 const OrderSummary = ({ cartItems, totalWithDiscount, onPlaceOrder, getDiscountedPrice }) => {
+  // Get the final price for an item based on whether it has a discount
+  const getFinalPrice = (item) => {
+    if (item.discount && item.discount > 0) {
+      return (item.discount * item.quantity).toFixed(2);
+    }
+    return (item.price * item.quantity).toFixed(2);
+  };
+
+  // Calculate case count for an item
+  const getCaseCount = (item) => {
+    return Math.floor(item.quantity / item.case_pack);
+  };
+
+  // Calculate eaches count (remainder after cases)
+  const getEachesCount = (item) => {
+    return item.quantity % item.case_pack;
+  };
+
+  // Format quantity as "X case(s) + Y each(es)"
+  const getFormattedQuantity = (item) => {
+    const cases = getCaseCount(item);
+    const eaches = getEachesCount(item);
+    
+    if (cases > 0 && eaches > 0) {
+      return `${cases} case${cases !== 1 ? 's' : ''} + ${eaches} each${eaches !== 1 ? 'es' : ''}`;
+    } else if (cases > 0) {
+      return `${cases} case${cases !== 1 ? 's' : ''}`;
+    } else {
+      return `${eaches} each${eaches !== 1 ? 'es' : ''}`;
+    }
+  };
+
   return (
     <div className="bg-white rounded-xs p-4 sm:p-6 border border-gray-200">
       <h2 className="text-xl font-bold mb-4">Order Summary</h2>
@@ -9,9 +41,11 @@ const OrderSummary = ({ cartItems, totalWithDiscount, onPlaceOrder, getDiscounte
         {/* Order Items */}
         {cartItems.map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-8">
-            <div className="flex flex-wrap items-center gap-1 mb-2 sm:mb-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1">
               <span className="font-medium">{item.description}</span>
-              <span className="text-gray-500 text-sm">x{item.quantity}</span>
+              <span className="text-gray-500 text-sm">
+                ({getFormattedQuantity(item)})
+              </span>
             </div>
 
             <div className="text-right">
@@ -21,11 +55,11 @@ const OrderSummary = ({ cartItems, totalWithDiscount, onPlaceOrder, getDiscounte
                     ${(item.price * item.quantity).toFixed(2)}
                   </span>
                   <span className="font-medium">
-                    ${(getDiscountedPrice(item) * item.quantity).toFixed(2)}
+                    ${getFinalPrice(item)}
                   </span>
                 </div>
               ) : (
-                <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="font-medium">${getFinalPrice(item)}</span>
               )}
             </div>
           </div>

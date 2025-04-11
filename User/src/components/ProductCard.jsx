@@ -37,7 +37,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           />
           {product.discount > 0 && (
             <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-2 py-1">
-              Save ${((product.discount * product.price)/100).toFixed(2)}
+              Save {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"} %
             </div>
           )}
         </div>
@@ -52,7 +52,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
                 {product.discount ? (
                   <>
                     <span className="text-red-600 font-bold text-xl mr-2">
-                    ${(product.price - ((product.discount * product.price)/100)).toFixed(2)}
+                    ${product.discount.toFixed(2)}
                     </span>
                     <span className="text-gray-400 line-through text-sm">
                       ${product.price.toFixed(2)}
@@ -105,7 +105,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     >
               {product.discount > 0 && (
           <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
-            Save ${((product.discount * product.price)/100).toFixed(2)}
+            Save {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"}%
           </div>
         )}
       <div className="relative mb-4">
@@ -124,7 +124,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           {product.discount ? (
             <div className="flex items-baseline gap-2">
               <span className="text-red-600 font-bold">
-                ${(product.price - ((product.discount * product.price)/100)).toFixed(2)}
+              ${product.discount.toFixed(2)}
               </span>
               <span className="text-gray-600 line-through text-xs">
                 ${product.price}

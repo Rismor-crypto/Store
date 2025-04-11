@@ -40,10 +40,19 @@ const CartPage = () => {
     }
   };
 
-  // New case handling functions
+  // Updated case handling function to reset eaches when going from 0 to 1 case
   const handleIncreaseCases = (productId) => {
     const currentItem = cartItems.find(item => item.id === productId);
-    updateQuantity(productId, currentItem.quantity + currentItem.case_pack);
+    const currentCases = Math.floor(currentItem.quantity / currentItem.case_pack);
+    
+    // If we're going from 0 cases to 1 case, reset eaches to 0
+    if (currentCases === 0) {
+      // Set quantity to exactly one case with no eaches
+      updateQuantity(productId, currentItem.case_pack);
+    } else {
+      // Normal case: just add one more case to the current quantity
+      updateQuantity(productId, currentItem.quantity + currentItem.case_pack);
+    }
   };
 
   const handleDecreaseCases = (productId) => {
@@ -62,8 +71,15 @@ const CartPage = () => {
       const currentItem = cartItems.find(item => item.id === productId);
       const caseQuantity = value === '' ? 0 : parseInt(value, 10);
       const eachesQuantity = currentItem.quantity % currentItem.case_pack;
-      const newQuantity = (caseQuantity * currentItem.case_pack) + eachesQuantity;
-      updateQuantity(productId, newQuantity > 0 ? newQuantity : 1);
+      
+      // If going from 0 to a positive number of cases, reset eaches
+      const currentCases = Math.floor(currentItem.quantity / currentItem.case_pack);
+      if (currentCases === 0 && caseQuantity > 0) {
+        updateQuantity(productId, caseQuantity * currentItem.case_pack);
+      } else {
+        const newQuantity = (caseQuantity * currentItem.case_pack) + eachesQuantity;
+        updateQuantity(productId, newQuantity > 0 ? newQuantity : 1);
+      }
     }
   };
 
@@ -76,17 +92,25 @@ const CartPage = () => {
     }
   };
 
+  // Updated to handle discount as final price
   const getDiscountedPrice = (product) => {
     if (product.discount && product.discount > 0) {
-      const discountAmount = product.price * (product.discount / 100);
-      return (product.price - discountAmount).toFixed(2);
+      return product.discount.toFixed(2);
     }
     return product.price.toFixed(2);
   };
 
+  // Calculate savings percentage
+  const getSavingsPercentage = (product) => {
+    if (product.discount && product.discount > 0) {
+      return ((product.price - product.discount) / product.price * 100).toFixed(1);
+    }
+    return "0";
+  };
+
   const getProductTotal = (product) => {
-    const discountedPrice = parseFloat(getDiscountedPrice(product));
-    return (discountedPrice * product.quantity).toFixed(2);
+    const finalPrice = product.discount && product.discount > 0 ? product.discount : product.price;
+    return (finalPrice * product.quantity).toFixed(2);
   };
 
   // Calculate case count for an item
@@ -97,6 +121,20 @@ const CartPage = () => {
   // Calculate eaches count (remainder after cases)
   const getEachesCount = (item) => {
     return item.quantity % item.case_pack;
+  };
+
+  // Format quantity as "X case(s) + Y each(es)"
+  const getFormattedQuantity = (item) => {
+    const cases = getCaseCount(item);
+    const eaches = getEachesCount(item);
+    
+    if (cases > 0 && eaches > 0) {
+      return `${cases} case${cases !== 1 ? 's' : ''} + ${eaches} each${eaches !== 1 ? 'es' : ''}`;
+    } else if (cases > 0) {
+      return `${cases} case${cases !== 1 ? 's' : ''}`;
+    } else {
+      return `${eaches} each${eaches !== 1 ? 'es' : ''}`;
+    }
   };
 
   if (cartItems.length === 0) {
@@ -155,14 +193,14 @@ const CartPage = () => {
                       </button>
                     </div>
 
-                    {/* Price Information */}
+                    {/* Price Information - Updated for discount as final price */}
                     <div className="text-gray-600 text-sm mt-1">
                       {item.discount && item.discount > 0 ? (
                         <div className="flex flex-wrap items-center gap-1">
                           <span className="line-through">${item.price.toFixed(2)}</span>
-                          <span className="text-blue-600">${getDiscountedPrice(item)}</span>
+                          <span className="text-blue-600">${item.discount.toFixed(2)}</span>
                           <span className="bg-blue-600 text-white px-2 py-0.5 rounded-xs text-xs">
-                            Save ${((item.discount * item.price) / 100).toFixed(2)}
+                            Save {getSavingsPercentage(item)}%
                           </span>
                         </div>
                       ) : (
@@ -170,6 +208,11 @@ const CartPage = () => {
                       )}
                     </div>
                     <div className='text-gray-600 text-sm'>Case Pack: {item.case_pack}</div>
+                    
+                    {/* Display formatted quantity - X case(s) + Y each(es) */}
+                    <div className="text-gray-600 text-sm font-medium mt-1">
+                      Quantity: {getFormattedQuantity(item)}
+                    </div>
                   </div>
                 </div>
 
@@ -189,7 +232,7 @@ const CartPage = () => {
                         </button>
                         <input
                           type="text"
-                          value={item.quantity}
+                          value={getEachesCount(item)}
                           onChange={(e) => handleQuantityChange(item.id, e)}
                           onBlur={(e) => handleQuantityBlur(item.id, e)}
                           className="w-12 text-center py-1 border-0 focus:ring-0 focus:outline-none"
@@ -236,9 +279,9 @@ const CartPage = () => {
                       </div>
                     </div>
 
-                    {/* Product Total */}
+                    {/* Product Total with formatted quantity */}
                     <div className="font-bold text-base sm:text-lg">
-                      <span className='text-gray-500 font-normal'>{getCaseCount(item)} case{getCaseCount(item) !== 1 ? 's' : ''}</span> - ${getProductTotal(item)}
+                      <span className="text-gray-500 font-normal mr-2">{getFormattedQuantity(item)}</span>${getProductTotal(item)}
                     </div>
                   </div>
                 </div>
@@ -256,7 +299,7 @@ const CartPage = () => {
                   <span>
                     {item.description}
                     <span className="text-gray-500 text-sm ml-1">
-                      x{item.quantity} ({getCaseCount(item)} case{getCaseCount(item) !== 1 ? 's' : ''} + {getEachesCount(item)})
+                      ({getFormattedQuantity(item)})
                     </span>
                   </span>
                   <div>
@@ -264,7 +307,7 @@ const CartPage = () => {
                     {item.discount && item.discount > 0 ? (
                       <>
                         <span className="line-through mr-2 text-gray-400">${(item.price * item.quantity).toFixed(2)}</span>
-                        <span>${getProductTotal(item)}</span>
+                        <span>${(item.discount * item.quantity).toFixed(2)}</span>
                       </>
                     ) : (
                       <span>${(item.price * item.quantity).toFixed(2)}</span>
@@ -284,7 +327,6 @@ const CartPage = () => {
                 <span>${totalWithDiscount.toFixed(2)}</span>
               </div>
             </div>
-
 
             {/* If the subtotal is less than 1500 dollars the user is not allowed to proceed because company only deals with large orders */}
             {totalWithDiscount <= 1500 && (

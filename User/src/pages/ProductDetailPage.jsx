@@ -4,6 +4,7 @@ import { useCartContext } from '../context/CartContext';
 import { ShoppingCart, Minus, Plus, Check, Loader2 } from 'lucide-react';
 import supabase from '../utils/supabase';
 
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const [product, setProduct] = useState(null);
@@ -13,6 +14,13 @@ const ProductDetailPage = () => {
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
   const { addToCart } = useCartContext();
+
+  const getSavingsPercentage = (product) => {
+    if (product.discount && product.discount > 0) {
+      return ((product.price - product.discount) / product.price * 100).toFixed(1);
+    }
+    return "0";
+  };
 
   useEffect(() => {
     const fetchProductDetails = async () => {
@@ -122,7 +130,7 @@ const ProductDetailPage = () => {
 
               {product.discount > 0 && (
                 <div className="bg-blue-700 text-white text-xs px-2 py-1 rounded">
-                  Save ${((product.discount * product.price)/100).toFixed(2)}
+                  Save {getSavingsPercentage(product)}%
                 </div>
               )}
             </div>
@@ -214,7 +222,7 @@ const ProductDetailPage = () => {
                   >
                             {product.discount > 0 && (
                         <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
-                          Save {product.discount}%
+                          Save {getSavingsPercentage(product)}%
                         </div>
                       )}
                     <div className="relative mb-4">

@@ -61,19 +61,23 @@ export const CartProvider = ({ children }) => {
     return cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
   };
 
+  // Get the final price for an item, considering discount as the final price
+  const getDiscountedPrice = (item) => {
+    if (item.discount && item.discount > 0) {
+      return item.discount;
+    }
+    return item.price;
+  };
+
   const getTotalPrice = () => {
     const totalWithoutDiscount = cartItems.reduce((total, item) => {
       return total + (item.price * (item.quantity || 1));
     }, 0);
   
     const totalWithDiscount = cartItems.reduce((total, item) => {
-      if (item.discount && item.discount > 0) {
-        const discountAmount = item.price * (item.discount / 100);
-        const discountedPrice = item.price - discountAmount;
-        return total + (discountedPrice * (item.quantity || 1));
-      } else {
-        return total + (item.price * (item.quantity || 1));
-      }
+      // Use discount as the final price if available
+      const finalPrice = item.discount && item.discount > 0 ? item.discount : item.price;
+      return total + (finalPrice * (item.quantity || 1));
     }, 0);
   
     return {
@@ -90,6 +94,7 @@ export const CartProvider = ({ children }) => {
       updateQuantity,
       getTotalItems,
       getTotalPrice,
+      getDiscountedPrice,
       clearCart
     }}>
       {children}

@@ -1,6 +1,5 @@
 import React from "react";
 
-
 const InvoiceDisplay = ({ 
   invoiceRef, 
   formData, 
@@ -12,6 +11,22 @@ const InvoiceDisplay = ({
   onDownloadPDF,
   isProcessing
 }) => {
+  // Function to calculate savings amount for an item
+  const getSavingsAmount = (item) => {
+    if (item.discount && item.discount > 0) {
+      return ((item.price - item.discount) * item.quantity).toFixed(2);
+    }
+    return "0.00";
+  };
+
+  // Function to calculate the final price for an item
+  const getFinalPrice = (item) => {
+    if (item.discount && item.discount > 0) {
+      return (item.discount * item.quantity).toFixed(2);
+    }
+    return (item.price * item.quantity).toFixed(2);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-4 md:p-8 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-auto">
@@ -68,7 +83,7 @@ const InvoiceDisplay = ({
                     Unit Price
                   </th>
                   <th className="border border-[#4a5565] p-2 text-right text-sm">
-                    Discount
+                    Savings
                   </th>
                   <th className="border border-[#4a5565] p-2 text-right text-sm">
                     Line Total
@@ -92,14 +107,22 @@ const InvoiceDisplay = ({
                     </td>
                     <td className="border border-[#4a5565] p-2 text-right text-sm">
                       ${item.price.toFixed(2)}
+                      {item.discount && item.discount > 0 && (
+                        <div className="text-xs border-[#4a5565]">
+                          ${item.discount.toFixed(2)} after discount
+                        </div>
+                      )}
                     </td>
                     <td className="border border-[#4a5565] p-2 text-right text-sm">
-                      {item.discount ? `$${(((item.discount * item.price) / 100) * item.quantity).toFixed(2)}` : "-"}
+                      {item.discount && item.discount > 0 
+                        ? `$${getSavingsAmount(item)}`
+                        : "-"
+                      }
                     </td>
                     <td className="border border-[#4a5565] p-2 text-right text-sm">
                       {item.discount && item.discount > 0 ? (
                         <span>
-                          ${(getDiscountedPrice(item) * item.quantity).toFixed(2)}
+                          ${getFinalPrice(item)}
                         </span>
                       ) : (
                         <span>
@@ -120,7 +143,7 @@ const InvoiceDisplay = ({
                 <span>${totalWithoutDiscount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b p-1">
-                <span>Discount:</span>
+                <span>Total Savings:</span>
                 <span>${(totalWithoutDiscount - totalWithDiscount).toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold p-1">

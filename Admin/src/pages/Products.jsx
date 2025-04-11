@@ -5,6 +5,7 @@ import {
   FileUp, Plus, Trash2, Search, Loader,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
   X as XIcon
+, Tag
 } from "lucide-react";
 
 import ProductsTable from "../components/Products/ProductsTable";
@@ -12,6 +13,7 @@ import Notification from "../components/common/Notification";
 import ImportModal from "../components/Products/ImportModal";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import Pagination from "../components/common/Pagination";
+import ImportSalesModal from "../components/Products/ImportSalesModal";
 
 const ProductsPage = () => {
   const { 
@@ -29,7 +31,8 @@ const ProductsPage = () => {
     currentPage,
     pageSize,
     changePage,
-    changePageSize
+    changePageSize,
+    importSalesFromCSV
   } = useProductContext();
   
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
@@ -39,6 +42,7 @@ const ProductsPage = () => {
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [isSalesImportModalOpen, setIsSalesImportModalOpen] = useState(false);
   
   // Update local search when context search changes
   useEffect(() => {
@@ -113,21 +117,28 @@ const ProductsPage = () => {
   };
 
   // Import CSV handler
-  const handleImportCSV = async (csvFile) => {
+  const handleImportCSV = async (csvFile, onProgress) => {
     try {
-      const stats = await importProductsFromCSV(csvFile);
+      const stats = await importProductsFromCSV(csvFile, onProgress);
       showNotification(`Import complete: ${stats.added} added, ${stats.updated} updated, ${stats.errors} errors`, "success");
-      
-      // Close modal after successful import if no errors
-      // if (stats.errors === 0) {
-      //   setTimeout(() => {
-      //     setShowImportModal(false);
-      //   }, 3000);
-      // }
       
       return stats;
     } catch (error) {
       showNotification(`Error importing CSV: ${error.message}`, "error");
+      throw error;
+    }
+  };
+  
+
+  const handleImportSalesCSV = async (csvFile, onProgress) => {
+    try {
+      const stats = await importSalesFromCSV(csvFile, onProgress);
+      showNotification(`Import complete: ${stats.updated} products updated, ${stats.notFound.length} products not found`, 
+        stats.notFound.length > 0 ? "warning" : "success");
+      
+      return stats;
+    } catch (error) {
+      showNotification(`Error importing Sales CSV: ${error.message}`, "error");
       throw error;
     }
   };
@@ -155,6 +166,13 @@ const ProductsPage = () => {
               Delete Selected ({selectedProducts.length})
             </button>
           )}
+          <button
+            onClick={() => setIsSalesImportModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+          >
+            <Tag className="h-4 w-4 mr-2" />
+            Import Sales Data
+          </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
@@ -271,6 +289,14 @@ const ProductsPage = () => {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={handleImportCSV}
+      />
+
+      
+      {/* Import Sales Modal Component */}
+      <ImportSalesModal 
+        isOpen={isSalesImportModalOpen}
+        onClose={() => setIsSalesImportModalOpen(false)}
+        onImport={handleImportSalesCSV}
       />
 
       {/* Delete Confirmation Modal */}

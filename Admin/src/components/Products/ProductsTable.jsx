@@ -115,7 +115,8 @@ const ProductsTable = ({ products, onDeleteClick }) => {
                     {product.case_pack || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.discount || "0"}%
+                    
+                    {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"} %
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex space-x-2">

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { FileUp, X, Check, Loader, AlertTriangle } from "lucide-react";
 
-const ImportModal = ({ isOpen, onClose, onImport }) => {
+const ImportSalesModal = ({ isOpen, onClose, onImport }) => {
   const [csvFile, setCsvFile] = useState(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState(null);
@@ -18,7 +18,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
 
     if (e.target.files && e.target.files[0]) {
       setCsvFile(e.target.files[0]);
-      setImportError(null); 
+      setImportError(null);
       setImportStats(null);
       setShowErrorDetails(false);
     }
@@ -68,7 +68,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
     try {
       setImporting(true);
       setImportError(null);
-      setImportProgress({ processed: 0, total: 0, percentage: 0 });
+      setImportProgress({ processed: 0, total: 0, percentage: 0, notFound: [] });
       setShowErrorDetails(false);
       
       const handleProgress = (progress) => {
@@ -77,12 +77,8 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
       
       const stats = await onImport(csvFile, handleProgress);
       setImportStats(stats);
-      
-      if (stats.errors === 0) {
-        setCsvFile(null);
-      }
     } catch (error) {
-      console.error("Error importing CSV:", error);
+      console.error("Error importing sales CSV:", error);
       setImportError(error.message || "Failed to import CSV file");
     } finally {
       setImporting(false);
@@ -109,9 +105,9 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6 overflow-y-scroll h-full">
+      <div className="bg-white rounded-lg max-w-2xl w-full p-6 h-full overflow-y-scroll">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Import Products from CSV</h3>
+          <h3 className="text-lg font-medium">Import Sales Data</h3>
           <button
             onClick={closeModal}
             className="text-gray-400 hover:text-gray-500 cursor-pointer"
@@ -122,22 +118,24 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
         
         <div className="mb-4">
           <p className="text-sm text-gray-600 mb-2">
-            Upload a CSV file with the following columns: upc, description, status, price, case_pack, image_url, category
+            Upload a CSV file with the following columns: upc, final_price. This will update discount prices for existing products only. The discount price must be less than the product's regular price.
           </p>
           
           {importStats && !importing && (
             <div className={`mb-4 p-3 rounded-md ${
-              importStats.errors > 0 ? 'bg-yellow-50 border border-yellow-300' : 'bg-green-50 border border-green-300'
+              importStats.errors > 0 || importStats.notFound.length > 0 
+                ? 'bg-yellow-50 border border-yellow-300' 
+                : 'bg-green-50 border border-green-300'
             }`}>
               <h4 className="font-medium mb-1">Import Results</h4>
               <ul className="text-sm">
                 <li>Total records: {formatNumber(importStats.total)}</li>
-                <li>Products added: {formatNumber(importStats.added)}</li>
                 <li>Products updated: {formatNumber(importStats.updated)}</li>
+                <li>Products not found: {formatNumber(importStats.notFound.length)}</li>
                 <li>Errors: {formatNumber(importStats.errors)}</li>
               </ul>
               
-              {importStats.errors > 0 && (
+              {(importStats.errors > 0 || importStats.notFound.length > 0) && (
                 <div className="mt-2">
                   <button 
                     onClick={toggleErrorDetails}
@@ -147,30 +145,52 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                     {showErrorDetails ? "Hide error details" : "Show error details"}
                   </button>
                   
-                  {showErrorDetails && importStats.errorRecords && importStats.errorRecords.length > 0 && (
-                    <div className="mt-2 max-h-60 overflow-y-auto border border-amber-200 rounded p-2 bg-amber-50">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-amber-200">
-                            <th className="text-left py-1 px-2">Row</th>
-                            <th className="text-left py-1 px-2">UPC</th>
-                            <th className="text-left py-1 px-2">Description</th>
-                            <th className="text-left py-1 px-2">Error</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {importStats.errorRecords.map((error, index) => (
-                            <tr key={index} className="border-b border-amber-100">
-                              <td className="py-1 px-2">{error.rowIndex > 0 ? error.rowIndex : 'N/A'}</td>
-                              <td className="py-1 px-2">{error.row?.upc || 'Missing'}</td>
-                              <td className="py-1 px-2 truncate max-w-[150px]">
-                                {error.row?.description || 'Missing'}
-                              </td>
-                              <td className="py-1 px-2">{error.reason}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {showErrorDetails && (
+                    <div className="mt-2">
+                      {/* Error Records Table */}
+                      {importStats.errorRecords && importStats.errorRecords.length > 0 && (
+                        <div className="mb-3">
+                          <h5 className="text-sm font-medium mb-1">Error Details</h5>
+                          <div className="max-h-60 overflow-y-auto border border-amber-200 rounded p-2 bg-amber-50">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-amber-200">
+                                  <th className="text-left py-1 px-2">Row</th>
+                                  <th className="text-left py-1 px-2">UPC</th>
+                                  <th className="text-left py-1 px-2">Final Price</th>
+                                  <th className="text-left py-1 px-2">Error</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {importStats.errorRecords.map((error, index) => (
+                                  <tr key={index} className="border-b border-amber-100">
+                                    <td className="py-1 px-2">{error.rowIndex > 0 ? error.rowIndex : 'N/A'}</td>
+                                    <td className="py-1 px-2">{error.row?.upc || 'Missing'}</td>
+                                    <td className="py-1 px-2">{error.row?.final_price || 'Missing'}</td>
+                                    <td className="py-1 px-2 max-w-sm truncate">{error.reason}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Products Not Found List */}
+                      {importStats.notFound.length > 0 && (
+                        <div>
+                          <h5 className="text-sm font-medium mb-1">Products Not Found</h5>
+                          <div className="max-h-40 overflow-y-auto border border-amber-200 rounded p-2 bg-amber-50">
+                            <div className="grid grid-cols-4 gap-2 text-xs">
+                              {importStats.notFound.map((upc, idx) => (
+                                <div key={idx} className="truncate">
+                                  {upc}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -181,7 +201,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
           {importing && importProgress && (
             <div className="mb-4">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
-                <span>Importing products...</span>
+                <span>Updating discount prices...</span>
                 <span>
                   {formatNumber(importProgress.processed)}/{formatNumber(importProgress.total)} ({importProgress.percentage}%)
                 </span>
@@ -192,13 +212,25 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                   style={{ width: `${importProgress.percentage}%` }}
                 ></div>
               </div>
+              
+              {importProgress.errors > 0 && (
+                <p className="mt-2 text-sm text-red-600">
+                  {formatNumber(importProgress.errors)} errors encountered
+                </p>
+              )}
+              
+              {importProgress.notFound.length > 0 && (
+                <p className="mt-2 text-sm text-yellow-600">
+                  {formatNumber(importProgress.notFound.length)} products not found
+                </p>
+              )}
             </div>
           )}
           
           {!importing && (
             <>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                CSV File
+                Sales CSV File
               </label>
               <div 
                 className={`flex justify-center px-6 pt-5 pb-6 border-2 cursor-pointer ${dragActive ? 'border-blue-300 bg-blue-50' : csvFile ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-white'} border-dashed rounded-md cursor-pointer hover:bg-gray-50`}
@@ -216,14 +248,14 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                   )}
                   <div className="flex text-sm text-gray-600">
                     <label
-                      htmlFor="file-upload"
+                      htmlFor="file-upload-sales"
                       className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
                       onClick={(e) => e.stopPropagation()} 
                     >
                       <span>{csvFile ? "Change file" : "Upload a file"}</span>
                       <input
-                        id="file-upload"
-                        name="file-upload"
+                        id="file-upload-sales"
+                        name="file-upload-sales"
                         type="file"
                         accept=".csv"
                         className="sr-only cursor-pointer"
@@ -234,7 +266,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
                     </label>
                     {!csvFile && <p className="pl-1">or drag and drop</p>}
                   </div>
-                  <p className="text-xs text-gray-500">CSV files only</p>
+                  <p className="text-xs text-gray-500">CSV with upc and final_price columns</p>
                 </div>
               </div>
               {csvFile && (
@@ -269,7 +301,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
               disabled={!csvFile}
             >
               <Check className="mr-2 h-4 w-4" />
-              Import
+              Import Sales Data
             </button>
           )}
         </div>
@@ -278,4 +310,4 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
   );
 };
 
-export default ImportModal;
+export default ImportSalesModal;

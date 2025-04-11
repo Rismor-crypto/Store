@@ -287,98 +287,524 @@ export const ProductProvider = ({ children }) => {
     return finalCategoryId;
   };
 
-  // Function to import products from CSV
-  const importProductsFromCSV = async (file) => {
-    return new Promise((resolve, reject) => {
-      // Track stats to return to the UI
-      const stats = {
-        added: 0,
-        updated: 0,
-        errors: 0,
-        total: 0
-      };
+// In ProductContext.jsx
+const importProductsFromCSV = async (file, onProgress) => {
+  return new Promise((resolve, reject) => {
+    // Track stats to return to the UI
+    const stats = {
+      added: 0,
+      updated: 0,
+      errors: 0,
+      total: 0,
+      processed: 0,
+      errorRecords: [] // New array to track specific error records
+    };
 
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          try {
-            const { data, errors, meta } = results;
-            stats.total = data.length;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const { data, errors, meta } = results;
+          stats.total = data.length;
+          
+          // Process in batches of 50 records
+          const BATCH_SIZE = 50;
+          const batches = [];
+          
+          // Split data into batches
+          for (let i = 0; i < data.length; i += BATCH_SIZE) {
+            batches.push(data.slice(i, i + BATCH_SIZE));
+          }
+          
+          // Process each batch
+          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
             
-            // Process each row sequentially (not in parallel to avoid race conditions)
-            for (const row of data) {
-              try {
-                // Check if product exists based on UPC
-                const { data: existingProducts } = await supabase
-                  .from('products')
-                  .select('id')
-                  .eq('upc', row.upc);
-
-                // Format product data from CSV row
-                const productData = {
-                  upc: row.upc,
-                  description: row.description,
-                  status: row.status || 'true',
-                  price: parseFloat(row.price) || 0,
-                  case_pack: parseFloat(row.case_pack) || 0,
-                  image_url: row.image_url || '',
-                  category: row.category || null,
-                  discount: parseFloat(row.discount) || 0,
-                };
-
-                // Process category if it's a path
-                // In importProductsFromCSV
-                if (productData.category && productData.category.includes('>')) {
-                    try {
-                      const categoryId = await findOrCreateCategory(productData.category);
-                      productData.category = categoryId;
-                    } catch (error) {
-                      console.error("Error in category processing:", error);
-                      // Set to null rather than keeping the string
-                      productData.category = null;
-                    }
+            try {
+              // Step 1: Process all categories first to reduce DB calls
+              const categoryPromises = batch
+                .filter(row => row.category && row.category.includes('>'))
+                .map(async row => {
+                  try {
+                    const categoryId = await findOrCreateCategory(row.category);
+                    return { originalCategory: row.category, categoryId };
+                  } catch (error) {
+                    console.error("Error processing category:", error, row.category);
+                    return { originalCategory: row.category, categoryId: null };
                   }
-
-                if (existingProducts && existingProducts.length > 0) {
-                  // Update existing product
-                  const { error } = await supabase
-                    .from('products')
-                    .update(productData)
-                    .eq('id', existingProducts[0].id);
-                  
-                  if (error) throw error;
-                  stats.updated++;
-                } else {
-                  // Add new product
-                  const { error } = await supabase
-                    .from('products')
-                    .insert([productData]);
-                  
-                  if (error) throw error;
-                  stats.added++;
+                });
+              
+              const categoryResults = await Promise.all(categoryPromises);
+              const categoryMap = categoryResults.reduce((map, result) => {
+                map[result.originalCategory] = result.categoryId;
+                return map;
+              }, {});
+              
+              // Step 2: Get all existing products in this batch to determine updates vs inserts
+              // First filter out and track records with missing required fields
+              const validRecords = [];
+              const invalidRecords = [];
+              
+              batch.forEach((row, index) => {
+                // Check for required fields - UPC and description are mandatory
+                if (!row.upc || row.upc.trim() === '') {
+                  invalidRecords.push({
+                    rowIndex: stats.processed + index + 1, // 1-based index for user display
+                    row,
+                    reason: "Missing UPC"
+                  });
+                  return;
                 }
-              } catch (error) {
-                console.error("Error processing CSV row:", error, row);
-                stats.errors++;
+                
+                if (!row.description || row.description.trim() === '') {
+                  invalidRecords.push({
+                    rowIndex: stats.processed + index + 1,
+                    row,
+                    reason: "Missing description"
+                  });
+                  return;
+                }
+                
+                // Price validation (must be a valid number)
+                if (isNaN(parseFloat(row.price))) {
+                  invalidRecords.push({
+                    rowIndex: stats.processed + index + 1,
+                    row,
+                    reason: "Invalid price"
+                  });
+                  return;
+                }
+                
+                validRecords.push(row);
+              });
+              
+              // Add invalid records to stats
+              if (invalidRecords.length > 0) {
+                stats.errors += invalidRecords.length;
+                stats.errorRecords = [...stats.errorRecords, ...invalidRecords];
+              }
+              
+              // Continue only with valid records
+              const upcs = validRecords.map(row => String(row.upc)).filter(Boolean);
+              
+              // Skip DB operations if no valid records in this batch
+              if (upcs.length === 0) {
+                stats.processed += batch.length;
+                if (onProgress) {
+                  onProgress({
+                    ...stats,
+                    percentage: Math.round((stats.processed / stats.total) * 100)
+                  });
+                }
+                continue;
+              }
+              
+              const { data: existingProducts } = await supabase
+                .from('products')
+                .select('id, upc')
+                .in('upc', upcs);
+              
+              // Create a map using string UPCs to ensure consistent comparison
+              const existingProductMap = existingProducts.reduce((map, product) => {
+                map[String(product.upc)] = product.id;
+                return map;
+              }, {});
+              
+              // Step 3: Prepare update and insert batches
+              const productsToUpdate = [];
+              const productsToInsert = [];
+              
+              for (const row of validRecords) {
+                try {
+                  // Ensure UPC is treated as a string
+                  const upc = String(row.upc);
+                  
+                  const productData = {
+                    upc: upc,
+                    description: row.description,
+                    status: row.status || 'true',
+                    price: parseFloat(row.price) || 0,
+                    case_pack: parseFloat(row.case_pack) || 0,
+                    image_url: row.image_url || '',
+                    category: (row.category && row.category.includes('>')) 
+                      ? categoryMap[row.category] 
+                      : row.category || null,
+                  };
+                  
+                  // Check if product exists by string UPC comparison
+                  if (existingProductMap[upc]) {
+                    productsToUpdate.push({
+                      id: existingProductMap[upc],
+                      ...productData
+                    });
+                  } else {
+                    productsToInsert.push(productData);
+                  }
+                } catch (error) {
+                  console.error("Error processing row:", error, row);
+                  stats.errors++;
+                  stats.errorRecords.push({
+                    rowIndex: stats.processed + validRecords.indexOf(row) + 1,
+                    row,
+                    reason: "Processing error: " + error.message
+                  });
+                }
+              }
+              
+              // Step 4: Perform updates first
+              if (productsToUpdate.length > 0) {
+                const { error: updateError } = await supabase
+                  .from('products')
+                  .upsert(productsToUpdate);
+                  
+                if (updateError) {
+                  console.error("Error updating products:", updateError);
+                  stats.errors += productsToUpdate.length;
+                  
+                  // Track all error records from this batch
+                  productsToUpdate.forEach(product => {
+                    stats.errorRecords.push({
+                      rowIndex: -1, // Unknown row index for batch errors
+                      row: product,
+                      reason: "Update error: " + updateError.message
+                    });
+                  });
+                } else {
+                  stats.updated += productsToUpdate.length;
+                }
+              }
+              
+              // Step 5: Handle inserts with fallback to update if there's a unique constraint error
+              if (productsToInsert.length > 0) {
+                const { data: insertedData, error: insertError } = await supabase
+                  .from('products')
+                  .insert(productsToInsert)
+                  .select();
+                  
+                if (insertError) {
+                  console.log("Error inserting products:", insertError);
+                  
+                  // If we get a unique constraint violation, try to update instead
+                  if (insertError.code === '23505') {
+                    console.log(`Processing potential duplicates as updates`);
+                    
+                    // Process each product individually to handle duplicates
+                    for (const product of productsToInsert) {
+                      const { error: individualError } = await supabase
+                        .from('products')
+                        .upsert([product]);
+                        
+                      if (individualError) {
+                        if (individualError.code === '23505') {
+                          // Count duplicate records as updates instead of errors
+                          stats.updated++;
+                        } else {
+                          console.error("Error with individual product upsert:", individualError);
+                          stats.errors++;
+                          stats.errorRecords.push({
+                            rowIndex: -1, // Unknown row index for individual errors
+                            row: product,
+                            reason: "Upsert error: " + individualError.message
+                          });
+                        }
+                      } else {
+                        stats.added++;
+                      }
+                    }
+                  } else {
+                    stats.errors += productsToInsert.length;
+                    // Track all error records from this batch
+                    productsToInsert.forEach(product => {
+                      stats.errorRecords.push({
+                        rowIndex: -1, // Unknown row index for batch errors
+                        row: product,
+                        reason: "Insert error: " + insertError.message
+                      });
+                    });
+                  }
+                } else {
+                  stats.added += insertedData.length;
+                }
+              }
+              
+              // Update processed count and report progress
+              stats.processed += batch.length;
+              if (onProgress) {
+                onProgress({
+                  ...stats,
+                  percentage: Math.round((stats.processed / stats.total) * 100)
+                });
+              }
+              
+            } catch (batchError) {
+              console.error("Error processing batch:", batchError);
+              stats.errors += batch.length;
+              
+              // Track all records in this batch as errors
+              batch.forEach((row, index) => {
+                stats.errorRecords.push({
+                  rowIndex: stats.processed + index + 1,
+                  row,
+                  reason: "Batch error: " + batchError.message
+                });
+              });
+              
+              // Still update processed count even for errors
+              stats.processed += batch.length;
+              if (onProgress) {
+                onProgress({
+                  ...stats,
+                  percentage: Math.round((stats.processed / stats.total) * 100)
+                });
               }
             }
-
-            // Refresh products list after import
-            await fetchProducts();
-            resolve(stats);
-          } catch (error) {
-            console.error("Error importing CSV:", error);
-            reject(error);
           }
-        },
-        error: (error) => {
-          console.error("Error parsing CSV:", error);
+          
+          // Refresh products list after import
+          await fetchProducts();
+          resolve(stats);
+        } catch (error) {
+          console.error("Error importing CSV:", error);
           reject(error);
         }
-      });
+      },
+      error: (error) => {
+        console.error("Error parsing CSV:", error);
+        reject(error);
+      }
     });
-  };
+  });
+};
+
+const importSalesFromCSV = async (file, onProgress) => {
+  return new Promise((resolve, reject) => {
+    // Track stats to return to the UI
+    const stats = {
+      updated: 0,
+      total: 0,
+      processed: 0,
+      notFound: [], // List of UPCs not found in database
+      errors: 0,
+      errorRecords: [] // Detailed error tracking
+    };
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const { data } = results;
+          stats.total = data.length;
+          
+          // Process in batches of 50 records
+          const BATCH_SIZE = 50;
+          const batches = [];
+          
+          // Split data into batches
+          for (let i = 0; i < data.length; i += BATCH_SIZE) {
+            batches.push(data.slice(i, i + BATCH_SIZE));
+          }
+          
+          // Process each batch
+          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+            const batchStartIndex = batchIndex * BATCH_SIZE; // For tracking row numbers
+            
+            try {
+              // First validate all rows and separate invalid ones
+              const validRows = [];
+              const invalidRows = [];
+              
+              batch.forEach((row, rowIndex) => {
+                const absoluteRowIndex = batchStartIndex + rowIndex + 1; // 1-based index for user display
+                
+                // Check for missing UPC
+                if (!row.upc || row.upc.trim() === '') {
+                  invalidRows.push({
+                    rowIndex: absoluteRowIndex,
+                    row,
+                    reason: "Missing UPC"
+                  });
+                  return;
+                }
+                
+                // Check for missing or invalid final_price
+                if (!row.final_price || row.final_price.trim() === '') {
+                  invalidRows.push({
+                    rowIndex: absoluteRowIndex,
+                    row,
+                    reason: "Missing final price"
+                  });
+                  return;
+                }
+                
+                // Check that final_price is a valid number
+                const finalPrice = parseFloat(row.final_price);
+                if (isNaN(finalPrice) || finalPrice <= 0) {
+                  invalidRows.push({
+                    rowIndex: absoluteRowIndex,
+                    row,
+                    reason: `Invalid final price: ${row.final_price}`
+                  });
+                  return;
+                }
+                
+                validRows.push(row);
+              });
+              
+              // Add invalid rows to error stats
+              if (invalidRows.length > 0) {
+                stats.errors += invalidRows.length;
+                stats.errorRecords = [...stats.errorRecords, ...invalidRows];
+              }
+              
+              if (validRows.length === 0) {
+                stats.processed += batch.length;
+                
+                // Report progress
+                if (onProgress) {
+                  onProgress({
+                    ...stats,
+                    percentage: Math.round((stats.processed / stats.total) * 100)
+                  });
+                }
+                continue; // Skip this batch if no valid rows
+              }
+              
+              // Get all valid UPCs in this batch
+              const upcs = validRows.map(row => row.upc);
+              
+              // Fetch all existing products in this batch
+              const { data: existingProducts } = await supabase
+                .from('products')
+                .select('id, upc, price')
+                .in('upc', upcs);
+              
+              // Create a map for quick lookup
+              const existingProductMap = existingProducts.reduce((map, product) => {
+                map[product.upc] = product;
+                return map;
+              }, {});
+              
+              // Track UPCs not found in this batch
+              const notFoundUPCs = [];
+              
+              // Process each row individually using proper updates (not upsert)
+              for (const row of validRows) {
+                try {
+                  const rowIndex = batchStartIndex + batch.indexOf(row) + 1; // 1-based index
+                  
+                  // Only proceed if product exists
+                  if (existingProductMap[row.upc]) {
+                    const product = existingProductMap[row.upc];
+                    const finalPrice = parseFloat(row.final_price);
+                    const productPrice = parseFloat(product.price);
+                    
+                    // Validate that discount is not greater than or equal to price
+                    if (finalPrice >= productPrice) {
+                      stats.errors++;
+                      stats.errorRecords.push({
+                        rowIndex,
+                        row,
+                        reason: `Discount price (${finalPrice}) must be less than product price (${productPrice})`
+                      });
+                      continue;
+                    }
+                    
+                    // Only update if the final price is valid
+                    if (finalPrice > 0) {
+                      // Use precise update with eq filter instead of upsert
+                      const { error } = await supabase
+                        .from('products')
+                        .update({ discount: finalPrice })
+                        .eq('id', product.id);
+                      
+                      if (error) {
+                        console.error(`Error updating product ${row.upc}:`, error);
+                        stats.errors++;
+                        stats.errorRecords.push({
+                          rowIndex,
+                          row,
+                          reason: `Database error: ${error.message}`
+                        });
+                      } else {
+                        stats.updated++;
+                      }
+                    }
+                  } else {
+                    // Product not found
+                    notFoundUPCs.push(row.upc);
+                    stats.errorRecords.push({
+                      rowIndex,
+                      row,
+                      reason: "Product UPC not found in database"
+                    });
+                  }
+                } catch (rowError) {
+                  console.error(`Error processing row with UPC ${row.upc}:`, rowError);
+                  stats.errors++;
+                  stats.errorRecords.push({
+                    rowIndex: -1, // Unknown index for caught errors
+                    row,
+                    reason: `Processing error: ${rowError.message}`
+                  });
+                }
+              }
+              
+              // Add not found UPCs to stats
+              if (notFoundUPCs.length > 0) {
+                stats.notFound = [...stats.notFound, ...notFoundUPCs];
+              }
+              
+              // Update processed count and report progress
+              stats.processed += batch.length;
+              if (onProgress) {
+                onProgress({
+                  ...stats,
+                  percentage: Math.round((stats.processed / stats.total) * 100)
+                });
+              }
+              
+            } catch (batchError) {
+              console.error("Error processing batch:", batchError);
+              stats.errors += batch.length;
+              
+              // Add all batch rows to error records
+              batch.forEach((row, index) => {
+                stats.errorRecords.push({
+                  rowIndex: batchStartIndex + index + 1,
+                  row,
+                  reason: `Batch processing error: ${batchError.message}`
+                });
+              });
+              
+              // Still update processed count even for errors
+              stats.processed += batch.length;
+              if (onProgress) {
+                onProgress({
+                  ...stats,
+                  percentage: Math.round((stats.processed / stats.total) * 100)
+                });
+              }
+            }
+          }
+          
+          // Refresh products list after import
+          await fetchProducts();
+          resolve(stats);
+        } catch (error) {
+          console.error("Error importing sales CSV:", error);
+          reject(error);
+        }
+      },
+      error: (error) => {
+        console.error("Error parsing CSV:", error);
+        reject(error);
+      }
+    });
+  });
+};
 
   const value = {
     products,
@@ -401,6 +827,7 @@ export const ProductProvider = ({ children }) => {
     findOrCreateCategory,
     importProductsFromCSV,
     handleSearch,
+    importSalesFromCSV,
   };
 
   return (

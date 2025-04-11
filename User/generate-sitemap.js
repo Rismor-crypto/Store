@@ -3,8 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 dotenv.config();
-console.log('process.env.VITE_SUPABASE_URL', process.env.VITE_SUPABASE_URL);
-console.log('process.env.VITE_SUPABASE_ANON_KEY', process.env.VITE_SUPABASE_ANON_KEY);
 
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -14,13 +12,6 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const baseUrl = 'https://russelco.vercel.app';
 
 async function generateSitemap() {
-  const staticUrls = [
-    '/',
-    '/products',
-    '/offers',
-    '/cart',
-    '/checkout',
-  ];
 
   // Fetch dynamic data from Supabase
   const { data: products, error: productError } = await supabase
@@ -36,12 +27,20 @@ async function generateSitemap() {
     return;
   }
 
-  const staticXml = staticUrls.map((path) => `
+  const staticXml = `
     <url>
-      <loc>${baseUrl}${path}</loc>
+      <loc>https://russelco.vercel.app/</loc>
+      <priority>1.0</priority>
+    </url>
+    <url>
+      <loc>https://russelco.vercel.app/products</loc>
+      <priority>0.9</priority>
+    </url>
+    <url>
+      <loc>https://russelco.vercel.app/offers</loc>
       <priority>0.8</priority>
     </url>
-  `).join('');
+  `;
 
   const productXml = products.map((product) => `
     <url>
@@ -53,7 +52,7 @@ async function generateSitemap() {
   const categoryXml = categories.map((cat) => `
     <url>
       <loc>${baseUrl}/product/category/${cat.id}</loc>
-      <priority>0.7</priority>
+      <priority>0.8</priority>
     </url>
   `).join('');
 
