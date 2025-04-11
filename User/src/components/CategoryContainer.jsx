@@ -10,7 +10,9 @@ const CategoryItem = ({
   onCategorySelect,
   expandedCategories,
   setExpandedCategories,
-  parentId = null
+  parentId = null,
+  isMobile = false,
+  onCategorySelected = null
 }) => {
   const navigate = useNavigate();
   const hasChildren = category.children && category.children.length > 0;
@@ -21,6 +23,11 @@ const CategoryItem = ({
     if (!hasChildren) {
       navigate(`/products/category/${category.id}`);
       onCategorySelect(category.id);
+      
+      // Close modal if in mobile view
+      if (isMobile && onCategorySelected) {
+        onCategorySelected();
+      }
     } else {
       // If it has children, toggle expansion
       toggleExpansion();
@@ -90,6 +97,8 @@ const CategoryItem = ({
               expandedCategories={expandedCategories}
               setExpandedCategories={setExpandedCategories}
               parentId={category.id}
+              isMobile={isMobile}
+              onCategorySelected={onCategorySelected}
             />
           ))}
         </div>
@@ -98,7 +107,7 @@ const CategoryItem = ({
   );
 };
 
-const CategoryContainer = () => {
+const CategoryContainer = ({ isMobile = false, onCategorySelected = null }) => {
   const { categories, selectedCategory, setSelectedCategory, setSearchQuery } = useProductContext();
   const navigate = useNavigate();
   const containerRef = useRef(null);
@@ -144,6 +153,11 @@ const CategoryContainer = () => {
     setSearchQuery(''); // Clear search query
     setExpandedCategories([]); // Collapse all categories
     navigate('/products');
+    
+    // If we're in mobile mode and have a callback, call it to close the modal
+    if (isMobile && onCategorySelected) {
+      onCategorySelected();
+    }
   };
 
   const handleCategorySelect = (categoryId) => {
@@ -185,6 +199,8 @@ const CategoryContainer = () => {
             onCategorySelect={handleCategorySelect}
             expandedCategories={expandedCategories}
             setExpandedCategories={setExpandedCategories}
+            isMobile={isMobile}
+            onCategorySelected={onCategorySelected}
           />
         ))}
       </div>

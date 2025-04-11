@@ -1,4 +1,3 @@
-// src/components/FilterModal.jsx
 import React, { useState } from 'react';
 import { Filter, X } from 'lucide-react';
 import CategoryContainer from './CategoryContainer';
@@ -58,7 +57,7 @@ const FilterModal = () => {
 
             {/* Category Container */}
             <div className="p-4">
-              <CategoryContainer isMobile={true} />
+              <CategoryContainer isMobile={true} onCategorySelected={handleClose} />
             </div>
           </div>
         </div>
