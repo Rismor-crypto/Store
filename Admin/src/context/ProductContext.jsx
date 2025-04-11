@@ -297,7 +297,7 @@ const importProductsFromCSV = async (file, onProgress) => {
       errors: 0,
       total: 0,
       processed: 0,
-      errorRecords: [] // New array to track specific error records
+      errorRecords: [] // Array to track specific error records
     };
 
     Papa.parse(file, {
@@ -341,9 +341,8 @@ const importProductsFromCSV = async (file, onProgress) => {
                 return map;
               }, {});
               
-              // Step 2: Get all existing products in this batch to determine updates vs inserts
-              // First filter out and track records with missing required fields
-              const validRecords = [];
+              // Step 2: Filter out and track records with missing required fields
+              let validRecords = [];
               const invalidRecords = [];
               
               batch.forEach((row, index) => {
@@ -385,11 +384,47 @@ const importProductsFromCSV = async (file, onProgress) => {
                 stats.errorRecords = [...stats.errorRecords, ...invalidRecords];
               }
               
-              // Continue only with valid records
-              const upcs = validRecords.map(row => String(row.upc)).filter(Boolean);
+              // Step 3: Handle duplicate UPCs within the batch
+              // Group records by UPC to identify duplicates
+              const recordsByUpc = {};
+              validRecords.forEach(record => {
+                const upc = String(record.upc);
+                if (!recordsByUpc[upc]) {
+                  recordsByUpc[upc] = [];
+                }
+                recordsByUpc[upc].push(record);
+              });
+              
+              // Keep only the last occurrence of each UPC
+              const deduplicatedRecords = [];
+              Object.entries(recordsByUpc).forEach(([upc, records]) => {
+                if (records.length > 1) {
+                  // Log warning about duplicate UPCs
+                  console.warn(`Found ${records.length} duplicate entries for UPC ${upc}, using last entry`);
+                  
+                  // Add the duplicates to error records for reporting
+                  records.slice(0, -1).forEach((duplicateRecord) => {
+                    const origIndex = validRecords.findIndex(r => r === duplicateRecord);
+                    stats.errorRecords.push({
+                      rowIndex: stats.processed + origIndex + 1,
+                      row: duplicateRecord,
+                      reason: `Duplicate UPC (${records.length} occurrences found in import)`
+                    });
+                    stats.errors++;
+                  });
+                  
+                  // Keep only the last record
+                  deduplicatedRecords.push(records[records.length - 1]);
+                } else {
+                  deduplicatedRecords.push(records[0]);
+                }
+              });
+              
+              // Replace validRecords with deduplicatedRecords
+              validRecords = deduplicatedRecords;
               
               // Skip DB operations if no valid records in this batch
-              if (upcs.length === 0) {
+              if (validRecords.length === 0) {
                 stats.processed += batch.length;
                 if (onProgress) {
                   onProgress({
@@ -399,6 +434,9 @@ const importProductsFromCSV = async (file, onProgress) => {
                 }
                 continue;
               }
+              
+              // Step 4: Get all existing products to determine updates vs inserts
+              const upcs = validRecords.map(row => String(row.upc));
               
               const { data: existingProducts } = await supabase
                 .from('products')
@@ -411,7 +449,7 @@ const importProductsFromCSV = async (file, onProgress) => {
                 return map;
               }, {});
               
-              // Step 3: Prepare update and insert batches
+              // Step 5: Prepare update and insert batches
               const productsToUpdate = [];
               const productsToInsert = [];
               
@@ -452,79 +490,76 @@ const importProductsFromCSV = async (file, onProgress) => {
                 }
               }
               
-              // Step 4: Perform updates first
+              // Step 6: Perform updates
               if (productsToUpdate.length > 0) {
-                const { error: updateError } = await supabase
-                  .from('products')
-                  .upsert(productsToUpdate);
-                  
-                if (updateError) {
-                  console.error("Error updating products:", updateError);
-                  stats.errors += productsToUpdate.length;
-                  
-                  // Track all error records from this batch
-                  productsToUpdate.forEach(product => {
+                // Process updates one by one to avoid conflicts
+                for (const product of productsToUpdate) {
+                  const { error: updateError } = await supabase
+                    .from('products')
+                    .update(product)
+                    .eq('id', product.id);
+                    
+                  if (updateError) {
+                    console.error("Error updating product:", updateError, product);
+                    stats.errors++;
                     stats.errorRecords.push({
-                      rowIndex: -1, // Unknown row index for batch errors
+                      rowIndex: -1, // Unknown row index for individual errors
                       row: product,
                       reason: "Update error: " + updateError.message
                     });
-                  });
-                } else {
-                  stats.updated += productsToUpdate.length;
+                  } else {
+                    stats.updated++;
+                  }
                 }
               }
               
-              // Step 5: Handle inserts with fallback to update if there's a unique constraint error
+              // Step 7: Handle inserts
               if (productsToInsert.length > 0) {
-                const { data: insertedData, error: insertError } = await supabase
-                  .from('products')
-                  .insert(productsToInsert)
-                  .select();
+                // Process inserts one by one to handle potential duplicates
+                for (const product of productsToInsert) {
+                  // First check if the product exists (could have been added by another concurrent process)
+                  const { data: existingCheck } = await supabase
+                    .from('products')
+                    .select('id')
+                    .eq('upc', product.upc)
+                    .maybeSingle();
                   
-                if (insertError) {
-                  console.log("Error inserting products:", insertError);
-                  
-                  // If we get a unique constraint violation, try to update instead
-                  if (insertError.code === '23505') {
-                    console.log(`Processing potential duplicates as updates`);
-                    
-                    // Process each product individually to handle duplicates
-                    for (const product of productsToInsert) {
-                      const { error: individualError } = await supabase
-                        .from('products')
-                        .upsert([product]);
-                        
-                      if (individualError) {
-                        if (individualError.code === '23505') {
-                          // Count duplicate records as updates instead of errors
-                          stats.updated++;
-                        } else {
-                          console.error("Error with individual product upsert:", individualError);
-                          stats.errors++;
-                          stats.errorRecords.push({
-                            rowIndex: -1, // Unknown row index for individual errors
-                            row: product,
-                            reason: "Upsert error: " + individualError.message
-                          });
-                        }
-                      } else {
-                        stats.added++;
-                      }
+                  if (existingCheck) {
+                    // Product exists, do an update instead
+                    const { error: updateError } = await supabase
+                      .from('products')
+                      .update(product)
+                      .eq('id', existingCheck.id);
+                      
+                    if (updateError) {
+                      console.error("Error updating existing product:", updateError, product);
+                      stats.errors++;
+                      stats.errorRecords.push({
+                        rowIndex: -1,
+                        row: product,
+                        reason: "Update error: " + updateError.message
+                      });
+                    } else {
+                      stats.updated++;
                     }
                   } else {
-                    stats.errors += productsToInsert.length;
-                    // Track all error records from this batch
-                    productsToInsert.forEach(product => {
+                    // Product doesn't exist, insert it
+                    const { error: insertError } = await supabase
+                      .from('products')
+                      .insert([product]);
+                      
+                    if (insertError) {
+                      console.error("Error inserting product:", insertError, product);
+                      stats.errors++;
                       stats.errorRecords.push({
-                        rowIndex: -1, // Unknown row index for batch errors
+                        rowIndex: -1,
                         row: product,
                         reason: "Insert error: " + insertError.message
                       });
-                    });
+                    } else {
+                      stats.added++;
+                    }
                   }
-                } else {
-                  stats.added += insertedData.length;
                 }
               }
               
