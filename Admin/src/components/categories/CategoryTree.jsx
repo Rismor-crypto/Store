@@ -36,6 +36,19 @@ const CategoryItem = ({
     setShowDeleteAlert(false);
   };
   
+  // Count all subcategories
+  const countSubcategories = (cat) => {
+    if (!cat.children || cat.children.length === 0) return 0;
+    
+    let count = cat.children.length;
+    for (const child of cat.children) {
+      count += countSubcategories(child);
+    }
+    return count;
+  };
+  
+  const subcategoryCount = countSubcategories(category);
+  
   return (
     <div>
       <div 
@@ -46,7 +59,6 @@ const CategoryItem = ({
         <div className="flex-grow flex items-center">
           {category.children && category.children.length > 0 ? (
             <button 
-              
               className="mr-1 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer"
             >
               {isExpanded ? (
@@ -100,11 +112,21 @@ const CategoryItem = ({
       {/* Delete confirmation alert */}
       {showDeleteAlert && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-auto">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Delete</h3>
             <p className="text-gray-700 mb-4">
               Are you sure you want to delete "{category.name}"?
             </p>
+            
+            {(category.children && category.children.length > 0) && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4">
+                <p className="text-amber-800 text-sm">
+                  Warning: This will also delete {subcategoryCount} subcategories
+                  and all associated products.
+                </p>
+              </div>
+            )}
+            
             <div className="flex justify-end space-x-3">
               <button
                 onClick={cancelDelete}
@@ -140,7 +162,6 @@ const CategoryItem = ({
     </div>
   );
 };
-
 const CategoryTree = ({ categories, onEdit, onDelete, onAdd }) => {
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">

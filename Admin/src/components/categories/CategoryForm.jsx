@@ -150,7 +150,7 @@ const CategoryForm = ({
               autoFocus
             />
           </div>
-          {!editingCategory && (
+          {/* {!editingCategory && ( */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Parent Category
@@ -174,7 +174,7 @@ const CategoryForm = ({
             </select>
             <span className='text-xs text-gray-600'>Select "No Parent" for top-level category</span>
           </div>
-        )}
+        {/* )} */}
           
           <div className="flex justify-end space-x-3">
             <button

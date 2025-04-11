@@ -163,7 +163,7 @@ export const updateCategory = async (categoryData) => {
   }
 };
 
-// Delete a category
+// Delete a category and all its subcategories and related products
 export const deleteCategory = async (id) => {
   try {
     // Check if category exists
@@ -177,38 +177,70 @@ export const deleteCategory = async (id) => {
       throw new Error('Category not found');
     }
     
-    // Check if category has children
-    const { data: children, error: childrenError } = await supabase
+    // Get all categories to identify descendant categories
+    const { data: allCategories, error: fetchError } = await supabase
       .from('categories')
-      .select('id')
-      .eq('parent_id', id);
+      .select('*');
       
-    if (childrenError) throw childrenError;
+    if (fetchError) throw fetchError;
     
-    if (children.length > 0) {
-      throw new Error('Cannot delete a category with subcategories');
+    // Identify all descendant category IDs (including nested subcategories)
+    const getDescendantIds = (parentId) => {
+      const descendants = [];
+      
+      const findDescendants = (pId) => {
+        const children = allCategories.filter(c => c.parent_id === pId);
+        
+        children.forEach(child => {
+          descendants.push(child.id);
+          findDescendants(child.id);
+        });
+      };
+      
+      findDescendants(parentId);
+      return descendants;
+    };
+    
+    const descendantIds = getDescendantIds(id);
+    const allIdsToDelete = [id, ...descendantIds];
+    
+    // Start a transaction to ensure all related deletions succeed or fail together
+    const { error: transactionError } = await supabase.rpc('delete_category_cascade', {
+      category_ids: allIdsToDelete
+    });
+    
+    // If the RPC function doesn't exist, fall back to separate operations
+    if (transactionError) {
+      console.warn('RPC function not available, falling back to separate operations');
+      
+      // First delete all products related to these categories
+      const { error: productsError } = await supabase
+        .from('products')
+        .delete()
+        .in('category', allIdsToDelete);
+        
+      if (productsError) throw productsError;
+      
+      // Then delete all categories in reverse order (children first)
+      // Starting with descendant categories
+      for (const catId of descendantIds) {
+        const { error } = await supabase
+          .from('categories')
+          .delete()
+          .eq('id', catId);
+          
+        if (error) throw error;
+      }
+      
+      // Finally delete the main category
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
     }
     
-    // Check if category is used in products (assuming you have a products table)
-    // This would be implemented based on your actual schema
-    // For example:
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('id')
-      .eq('category', id);
-      
-    if (productsError) throw productsError;
-    
-    if (products && products.length > 0) {
-      throw new Error('Cannot delete a category that is used by products');
-    }
-    
-    const { error } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
-      
-    if (error) throw error;
     return true;
   } catch (error) {
     console.error('Error deleting category:', error);
