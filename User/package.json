@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "generate-sitemap": "node generate-sitemap.js",
-    "postbuild": "npm run generate-sitemap",
+    "vercel-build": "npm run generate-sitemap && npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
