@@ -12,7 +12,7 @@ const SearchBar = () => {
   const searchRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { fetchProducts, setSearchQuery } = useProductContext();
+  const { fetchProducts, setSearchQuery, setSelectedCategory } = useProductContext();
 
   // Debounce search to reduce unnecessary API calls
   useEffect(() => {
@@ -73,6 +73,9 @@ const SearchBar = () => {
     // Set the search query in context directly
     setSearchQuery(searchTerm);
     
+    // Clear any selected category to ensure global search
+    setSelectedCategory(null);
+    
     // Close the dropdown
     setIsDropdownVisible(false);
     
@@ -102,7 +105,7 @@ const SearchBar = () => {
       <div className="relative flex items-center bg-white rounded-xs overflow-hidden">
         <input 
           type="text" 
-          placeholder="Search..." 
+          placeholder="Search products..." 
           className="w-full p-2 pl-4 text-black outline-none"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

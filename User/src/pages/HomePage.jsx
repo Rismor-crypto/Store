@@ -25,6 +25,9 @@ const HomePage = () => {
   const [showSpecialOffers, setShowSpecialOffers] = useState(true);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
+  // Check if we're on the offers page
+  const isOffersPage = location.pathname === '/offers';
+
   const findCategoryById = useCallback((categories, targetId) => {
     for (let category of categories) {
       if (category.id === targetId) return category;
@@ -42,6 +45,13 @@ const HomePage = () => {
     return null;
   }, []);
 
+  // Clear selected category when on offers page
+  useEffect(() => {
+    if (isOffersPage && selectedCategory) {
+      setSelectedCategory(null);
+    }
+  }, [isOffersPage, selectedCategory, setSelectedCategory]);
+
   // Process URL search parameters only once when component mounts
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search');
@@ -54,8 +64,7 @@ const HomePage = () => {
   useEffect(() => {
     if (!categories.length) return; // Wait for categories to load
 
-    // Determine if we're on the offers page
-    const isOffersPage = location.pathname === '/offers';
+    // Only show special offers on main page and not on search results
     setShowSpecialOffers(!isOffersPage && !searchQuery);
 
     let fetchParams = { 
@@ -65,8 +74,8 @@ const HomePage = () => {
       filter: isOffersPage ? 'discount' : null
     };
 
-    // Only set category ID if valid
-    if (categoryId || selectedCategory) {
+    // Only set category ID if valid and not on offers page
+    if (!isOffersPage && (categoryId || selectedCategory)) {
       const targetCategoryId = categoryId || selectedCategory;
       const foundCategory = findCategoryById(categories, targetCategoryId);
       
@@ -77,7 +86,6 @@ const HomePage = () => {
     
     // Use a timeout to ensure state changes have settled
     const timer = setTimeout(() => {
-      
       fetchProducts(
         fetchParams.page, 
         fetchParams.pageSize, 
@@ -99,7 +107,8 @@ const HomePage = () => {
     fetchProducts, 
     findCategoryById, 
     selectedCategory, 
-    sortOption
+    sortOption,
+    isOffersPage
   ]);
   
   const clearSearch = () => {
@@ -126,21 +135,30 @@ const HomePage = () => {
           </div>
           
           <div className="w-full md:w-3/4">
-          {searchQuery && (
-          <div className="mb-6 p-3 bg-gray-100 rounded flex items-center justify-between">
-            <div className="flex items-center">
-              <Search className="mr-2 text-red-600" size={20} />
-              <span className="font-medium">Search results for: "{searchQuery}"</span>
-            </div>
-            <button 
-              onClick={clearSearch}
-              className="flex items-center text-gray-600 hover:text-red-600"
-            >
-              <X size={18} className="mr-1" />
-              <span>Clear</span>
-            </button>
-          </div>
-        )}
+            {isOffersPage && (
+              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="font-medium text-red-600">Special Offers</span>
+                </div>
+              </div>
+            )}
+            
+            {searchQuery && (
+              <div className="mb-6 p-3 bg-gray-100 rounded flex items-center justify-between">
+                <div className="flex items-center">
+                  <Search className="mr-2 text-red-600" size={20} />
+                  <span className="font-medium">Search results for: "{searchQuery}"</span>
+                </div>
+                <button 
+                  onClick={clearSearch}
+                  className="flex items-center text-gray-600 hover:text-red-600"
+                >
+                  <X size={18} className="mr-1" />
+                  <span>Clear</span>
+                </button>
+              </div>
+            )}
+            
             {showSpecialOffers && <SpecialOffersSection />}
             <ProductGrid />
           </div>

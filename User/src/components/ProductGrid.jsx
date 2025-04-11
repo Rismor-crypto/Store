@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useProductContext } from '../context/ProductContext';
 import ProductCard from './ProductCard';
 import Pagination from './Pagination';
@@ -8,7 +8,6 @@ const ProductGrid = () => {
   const { products, viewMode, categories, selectedCategory, isLoading } = useProductContext();
 
   const findCategoryById = (categoryId, categoriesList) => {
-
     for (let category of categoriesList) {
       if (category.id === categoryId) {
         return category;
@@ -35,7 +34,6 @@ const ProductGrid = () => {
   const selectedCategoryInfo = selectedCategory 
     ? findCategoryById(selectedCategory, categories) 
     : null;
-
 
   return (
     <div className="">
@@ -71,7 +69,8 @@ const ProductGrid = () => {
         </div>
       )}
      
-      <Pagination />
+      {/* Pass the selected category to Pagination */}
+      <Pagination currentCategory={selectedCategory} />
     </div>
   );
 };

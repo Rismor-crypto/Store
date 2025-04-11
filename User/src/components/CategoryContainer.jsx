@@ -1,37 +1,20 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProductContext } from '../context/ProductContext';
 
-const CategoryItem = ({ category, depth = 0, selectedCategory, onCategorySelect }) => {
+const CategoryItem = ({ 
+  category, 
+  depth = 0, 
+  selectedCategory, 
+  onCategorySelect,
+  expandedCategories,
+  setExpandedCategories,
+  parentId = null
+}) => {
   const navigate = useNavigate();
-  const [isExpanded, setIsExpanded] = React.useState(false);
   const hasChildren = category.children && category.children.length > 0;
-
-  const isAncestorOfSelected = useCallback(() => {
-    if (!selectedCategory || category.id === selectedCategory) return false;
-    
-    const checkDescendants = (currentCategory) => {
-      if (!currentCategory.children) return false;
-      
-      // Check direct children
-      if (currentCategory.children.some(child => child.id === selectedCategory)) {
-        return true;
-      }
-      
-      // Check deeper descendants
-      return currentCategory.children.some(child => checkDescendants(child));
-    };
-    
-    return checkDescendants(category);
-  }, [selectedCategory, category]);
-
-  // Auto-expand if selected category is a descendant (but not self)
-  useEffect(() => {
-    if (selectedCategory && isAncestorOfSelected()) {
-      setIsExpanded(true);
-    }
-  }, [selectedCategory, isAncestorOfSelected]);
+  const isExpanded = expandedCategories.includes(category.id);
 
   const handleCategoryClick = () => {
     // Only navigate if this category has no children
@@ -39,15 +22,25 @@ const CategoryItem = ({ category, depth = 0, selectedCategory, onCategorySelect 
       navigate(`/products/category/${category.id}`);
       onCategorySelect(category.id);
     } else {
-      // If it has children, just toggle expansion
-      setIsExpanded(!isExpanded);
+      // If it has children, toggle expansion
+      toggleExpansion();
+    }
+  };
+
+  const toggleExpansion = () => {
+    // If already expanded, collapse it
+    if (isExpanded) {
+      setExpandedCategories(expandedCategories.filter(id => id !== category.id));
+    } else {
+      // Otherwise add this one to expanded categories
+      setExpandedCategories([...expandedCategories, category.id]);
     }
   };
 
   const handleChevronClick = (e) => {
     // Stop event propagation to prevent category click handler
     e.stopPropagation();
-    setIsExpanded(!isExpanded);
+    toggleExpansion();
   };
 
   // Calculate padding based on depth
@@ -83,7 +76,7 @@ const CategoryItem = ({ category, depth = 0, selectedCategory, onCategorySelect 
           className={`
             pl-4 overflow-hidden transition-all duration-300 ease-in-out
             ${isExpanded 
-              ? 'max-h-screen opacity-100 py-2' 
+              ? ' opacity-100 py-2' 
               : 'max-h-0 opacity-0 py-0'}
           `}
         >
@@ -94,6 +87,9 @@ const CategoryItem = ({ category, depth = 0, selectedCategory, onCategorySelect 
               depth={depth + 1}
               selectedCategory={selectedCategory}
               onCategorySelect={onCategorySelect}
+              expandedCategories={expandedCategories}
+              setExpandedCategories={setExpandedCategories}
+              parentId={category.id}
             />
           ))}
         </div>
@@ -106,23 +102,60 @@ const CategoryContainer = () => {
   const { categories, selectedCategory, setSelectedCategory, setSearchQuery } = useProductContext();
   const navigate = useNavigate();
   const containerRef = useRef(null);
+  const [expandedCategories, setExpandedCategories] = useState([]);
 
-  // Function to reset all category expansions when "All Products" is clicked
+  // Auto-expand parent of selected category, if any
+  useEffect(() => {
+    if (selectedCategory) {
+      const findParentCategory = (cats, targetId, parentId = null) => {
+        for (const cat of cats) {
+          if (cat.id === targetId) {
+            return parentId;
+          }
+          
+          if (cat.children && cat.children.length > 0) {
+            // Check direct children first
+            for (const child of cat.children) {
+              if (child.id === targetId) {
+                return cat.id;
+              }
+            }
+            
+            // Then check deeper nested children
+            for (const child of cat.children) {
+              const result = findParentCategory([child], targetId, cat.id);
+              if (result) return result;
+            }
+          }
+        }
+        return null;
+      };
+      
+      const parentCategoryId = findParentCategory(categories, selectedCategory);
+      if (parentCategoryId && !expandedCategories.includes(parentCategoryId)) {
+        setExpandedCategories(prev => [...prev, parentCategoryId]);
+      }
+    }
+  }, [selectedCategory, categories, expandedCategories]);
+
+  // Function to reset when "All Products" is clicked
   const handleAllProductsClick = () => {
     setSelectedCategory(null); // Clear selected category
     setSearchQuery(''); // Clear search query
+    setExpandedCategories([]); // Collapse all categories
     navigate('/products');
-    
-    // This will force a re-render of all components, resetting their expansion state
-    // We could implement a more explicit reset mechanism if needed
   };
 
   const handleCategorySelect = (categoryId) => {
+    // When a category is selected, clear any search query
+    setSearchQuery('');
+    
+    // Set selected category
     setSelectedCategory(categoryId);
   };
 
   return (
-    <div className="bg-white border border-gray-200 p-6 rounded-xs">
+    <div className="bg-white border border-gray-200 p-6 rounded-lg">
       <h2 className="text-lg font-bold mb-4 text-gray-800">Categories</h2>
      
       {/* All Products Button */}
@@ -139,10 +172,10 @@ const CategoryContainer = () => {
         <span className="text-sm font-medium">All Products</span>
       </div>
 
-      {/* Scrollable Category Tree Container */}
+      {/* Category Tree Container - No Scroll */}
       <div 
         ref={containerRef}
-        className="space-y-2 max-h-96 overflow-y-auto pr-2"
+        className="space-y-2 pr-2 overflow-visible"
       >
         {categories.map(category => (
           <CategoryItem
@@ -150,6 +183,8 @@ const CategoryContainer = () => {
             category={category}
             selectedCategory={selectedCategory}
             onCategorySelect={handleCategorySelect}
+            expandedCategories={expandedCategories}
+            setExpandedCategories={setExpandedCategories}
           />
         ))}
       </div>

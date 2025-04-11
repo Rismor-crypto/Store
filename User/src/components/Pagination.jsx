@@ -2,15 +2,26 @@ import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProductContext } from '../context/ProductContext';
 
-const Pagination = () => {
-  const { pagination, fetchProducts } = useProductContext();
+const Pagination = ({ currentCategory }) => {
+  const { pagination, fetchProducts, selectedCategory, sortOption } = useProductContext();
   const { page, pageSize, totalProducts } = pagination;
   
   const totalPages = Math.ceil(totalProducts / pageSize);
   
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
-      fetchProducts(newPage, pageSize);
+      // Use the currentCategory prop if provided, otherwise fall back to selectedCategory from context
+      const categoryToUse = currentCategory !== undefined ? currentCategory : selectedCategory;
+      
+      // Call fetchProducts with all necessary parameters to maintain state
+      fetchProducts(
+        newPage,         // page number
+        pageSize,        // page size
+        categoryToUse,   // category ID
+        sortOption,      // sorting option
+        null,            // filter (null for normal filtering)
+        undefined        // search (undefined to use current search state)
+      );
     }
   };
   
@@ -96,6 +107,9 @@ const Pagination = () => {
     
     return pageNumbers;
   };
+  
+  // Don't render pagination if there's only 1 page or no pages
+  if (totalPages <= 1) return null;
   
   return (
     <div className="flex items-center justify-center mt-6 mb-6">
