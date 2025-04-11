@@ -1,13 +1,12 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useProductContext } from '../context/ProductContext';
 
-const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
+const CategoryItem = ({ category, depth = 0, selectedCategory, onCategorySelect }) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = React.useState(false);
   const hasChildren = category.children && category.children.length > 0;
-
 
   const isAncestorOfSelected = useCallback(() => {
     if (!selectedCategory || category.id === selectedCategory) return false;
@@ -34,25 +33,34 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
     }
   }, [selectedCategory, isAncestorOfSelected]);
 
-  const handleCategoryClick = (e) => {
-    // Navigate using category ID
-    navigate(`/products/category/${category.id}`);
+  const handleCategoryClick = () => {
+    // Only navigate if this category has no children
+    if (!hasChildren) {
+      navigate(`/products/category/${category.id}`);
+      onCategorySelect(category.id);
+    } else {
+      // If it has children, just toggle expansion
+      setIsExpanded(!isExpanded);
+    }
   };
 
   const handleChevronClick = (e) => {
-    // Stop event propagation to prevent navigation
+    // Stop event propagation to prevent category click handler
     e.stopPropagation();
     setIsExpanded(!isExpanded);
   };
 
+  // Calculate padding based on depth
+  const paddingLeft = depth > 0 ? `${depth * 0.5}rem` : '0';
+
   return (
-    <div className={`pl-${depth}`}>
+    <div style={{ paddingLeft }}>
       <div
         className={`
           flex items-center gap-2 py-2 cursor-pointer 
           transition-colors duration-200 ease-in-out
           ${selectedCategory === category.id 
-            ? 'text-red-600' 
+            ? 'text-red-600 font-medium' 
             : 'text-gray-700 hover:text-red-600'}
         `}
         onClick={handleCategoryClick}
@@ -85,6 +93,7 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
               category={child}
               depth={depth + 1}
               selectedCategory={selectedCategory}
+              onCategorySelect={onCategorySelect}
             />
           ))}
         </div>
@@ -94,13 +103,22 @@ const CategoryItem = ({ category, depth = 0, selectedCategory }) => {
 };
 
 const CategoryContainer = () => {
-  const { categories, fetchProducts, selectedCategory, setSelectedCategory, setSearchQuery } = useProductContext();
+  const { categories, selectedCategory, setSelectedCategory, setSearchQuery } = useProductContext();
   const navigate = useNavigate();
+  const containerRef = useRef(null);
 
+  // Function to reset all category expansions when "All Products" is clicked
   const handleAllProductsClick = () => {
     setSelectedCategory(null); // Clear selected category
     setSearchQuery(''); // Clear search query
     navigate('/products');
+    
+    // This will force a re-render of all components, resetting their expansion state
+    // We could implement a more explicit reset mechanism if needed
+  };
+
+  const handleCategorySelect = (categoryId) => {
+    setSelectedCategory(categoryId);
   };
 
   return (
@@ -113,7 +131,7 @@ const CategoryContainer = () => {
           mb-4 py-2 cursor-pointer 
           transition-colors duration-200 ease-in-out
           ${selectedCategory === null 
-            ? 'text-red-600' 
+            ? 'text-red-600 font-medium' 
             : 'text-gray-700 hover:text-red-600'}
         `}
         onClick={handleAllProductsClick}
@@ -121,13 +139,17 @@ const CategoryContainer = () => {
         <span className="text-sm font-medium">All Products</span>
       </div>
 
-      {/* Category Tree */}
-      <div className="space-y-2">
+      {/* Scrollable Category Tree Container */}
+      <div 
+        ref={containerRef}
+        className="space-y-2 max-h-96 overflow-y-auto pr-2"
+      >
         {categories.map(category => (
           <CategoryItem
             key={category.id}
             category={category}
             selectedCategory={selectedCategory}
+            onCategorySelect={handleCategorySelect}
           />
         ))}
       </div>
