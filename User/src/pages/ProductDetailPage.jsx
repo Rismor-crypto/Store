@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { useCartContext } from '../context/CartContext';
 import { ShoppingCart, Minus, Plus, Check, Loader2 } from 'lucide-react';
 import supabase from '../utils/supabase';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import 'react-lazy-load-image-component/src/effects/blur.css';
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -185,6 +187,9 @@ const ProductDetailPage = () => {
     }
   };
 
+  // Placeholder image for lazy loading
+  const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjwvc3ZnPg==';
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen -mt-20">
@@ -261,6 +266,8 @@ const ProductDetailPage = () => {
                 <span className="text-sm font-medium">Eaches:</span>
                 <div className="flex items-center border rounded-xs">
                   <button
+                    
+                    type='button'
                     onClick={handleDecreaseQuantity}
                     className="p-1.5 rounded-l-xs cursor-pointer"
                     aria-label="Decrease quantity"
@@ -276,6 +283,7 @@ const ProductDetailPage = () => {
                     aria-label="Eaches"
                   />
                   <button
+                    type='button'
                     onClick={handleIncreaseQuantity}
                     className="p-1.5 rounded-r-xs cursor-pointer"
                     aria-label="Increase quantity"
@@ -290,6 +298,7 @@ const ProductDetailPage = () => {
                 <span className="text-sm font-medium pr-2">Cases:</span>
                 <div className="flex items-center border rounded-xs">
                   <button
+                    type='button'
                     onClick={handleDecreaseCases}
                     className="p-1.5 rounded-l-xs cursor-pointer"
                     aria-label="Decrease cases"
@@ -305,6 +314,7 @@ const ProductDetailPage = () => {
                     aria-label="Cases"
                   />
                   <button
+                    type='button'
                     onClick={handleIncreaseCases}
                     className="p-1.5 rounded-r-xs cursor-pointer"
                     aria-label="Increase cases"
@@ -317,6 +327,8 @@ const ProductDetailPage = () => {
 
             {/* Add to cart button */}
             <button
+              type='button'
+              title="Add to Cart"
               onClick={handleAddToCart}
               className="w-52 flex items-center justify-center py-6 border relative overflow-hidden bg-red-500 text-white hover:bg-red-600 border-red-500 transition-all duration-300 rounded-xs cursor-pointer"
             >
@@ -364,12 +376,14 @@ const ProductDetailPage = () => {
                   </div>
                 )}
                 <div className="relative mb-4">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                    loading='lazy'
-                  />
+                  <LazyLoadImage
+                              src={product.image_url}
+                              alt={product.description}
+                              effect="blur"
+                              placeholderSrc={placeholderImage}
+                              className="w-full h-48 object-cover"
+                              wrapperClassName="w-full h-full"
+                            />
                 </div>
           
                 <div>
@@ -392,6 +406,8 @@ const ProductDetailPage = () => {
                       </span>
                     )}
                     <button 
+                      type='button'
+                      title="Add to Cart"
                       onClick={(e) => {
                         e.stopPropagation();
                         // Add related product to cart with quantity 1

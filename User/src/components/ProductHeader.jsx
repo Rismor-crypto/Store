@@ -53,12 +53,16 @@ const ProductHeader = () => {
           {/* View Mode Toggles */}
           <div className="flex items-center bg-gray-100 mb-4 md:mb-0 rounded-xs">
             <button 
+              type="button"
+              title="Grid View"
               className={`p-2 cursor-pointer rounded-l-xs ${viewMode === 'grid' ? 'bg-black text-white' : 'text-gray-500 hover:text-red-600'}`}
               onClick={() => setViewMode('grid')}
             >
               <Grid size={20} />
             </button>
             <button 
+              type="button"
+              title="List View"
               className={`p-2 cursor-pointer rounded-r-xs overflow-hidden ${viewMode === 'list' ? 'bg-black text-white' : 'text-gray-500 hover:text-red-600'}`}
               onClick={() => setViewMode('list')}
             >

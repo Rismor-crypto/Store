@@ -32,6 +32,8 @@ const Pagination = ({ currentCategory }) => {
     // Always show first page
     pageNumbers.push(
       <button
+      type="button"
+      title="Go to page 1"
         key={1}
         onClick={() => handlePageChange(1)}
         className={`
@@ -62,6 +64,8 @@ const Pagination = ({ currentCategory }) => {
       
       pageNumbers.push(
         <button
+          type="button"
+          title={`Go to page ${i}`}
           key={i}
           onClick={() => handlePageChange(i)}
           className={`
@@ -90,6 +94,8 @@ const Pagination = ({ currentCategory }) => {
     if (totalPages > 1) {
       pageNumbers.push(
         <button
+          type="button"
+          title={`Go to page ${totalPages}`}
           key={totalPages}
           onClick={() => handlePageChange(totalPages)}
           className={`
@@ -115,6 +121,8 @@ const Pagination = ({ currentCategory }) => {
     <div className="flex items-center justify-center mt-6 mb-6">
       {/* Previous Button */}
       <button
+        type="button"
+        title="Previous Page"
         onClick={() => handlePageChange(page - 1)}
         disabled={page === 1}
         className={`
@@ -135,6 +143,8 @@ const Pagination = ({ currentCategory }) => {
       
       {/* Next Button */}
       <button
+        type="button"
+        title="Next Page"
         onClick={() => handlePageChange(page + 1)}
         disabled={page === totalPages}
         className={`

@@ -169,7 +169,7 @@ const CategoryContainer = ({ isMobile = false, onCategorySelected = null }) => {
   };
 
   return (
-    <div className="bg-white border border-gray-200 p-6 rounded-lg">
+    <div className="bg-white border border-gray-200 p-6 rounded-xs">
       <h2 className="text-lg font-bold mb-4 text-gray-800">Categories</h2>
      
       {/* All Products Button */}

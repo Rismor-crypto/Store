@@ -22,7 +22,7 @@ const SpecialOffersSection = () => {
                 <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
                   Exclusive Special Offers
                 </h2>
-                <p className="text-sm md:text-base text-white/80 mt-1">
+                <p className="text-sm md:text-base text-white mt-1">
                   Limited time deals you won't want to miss!
                 </p>
               </div>

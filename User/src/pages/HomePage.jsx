@@ -150,6 +150,7 @@ const HomePage = () => {
                   <span className="font-medium">Search results for: "{searchQuery}"</span>
                 </div>
                 <button 
+                  type="button"
                   onClick={clearSearch}
                   className="flex items-center text-gray-600 hover:text-red-600"
                 >

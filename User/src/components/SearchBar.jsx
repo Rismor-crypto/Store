@@ -125,6 +125,8 @@ const SearchBar = () => {
         
         {/* Search button */}
         <button 
+          type="button"
+          title="Search"
           className="absolute right-0 top-0 bottom-0 text-gray-500 hover:text-red-600 p-2 px-4 transition"
           onClick={handleViewAllProducts}
           disabled={searchTerm.trim() === ''}

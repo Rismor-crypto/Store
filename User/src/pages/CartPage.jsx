@@ -187,6 +187,8 @@ const CartPage = () => {
 
                       {/* Remove Item - Top Right on Mobile */}
                       <button
+                        type="button"
+                        title="Remove from Cart"
                         onClick={() => removeFromCart(item.id)}
                         className="text-red-500 hover:text-red-700 cursor-pointer mt-1 shrink-0"
                       >
@@ -225,6 +227,7 @@ const CartPage = () => {
                       <span className="mr-2 text-sm font-medium">Eaches:</span>
                       <div className="flex items-center border rounded-xs">
                         <button
+                          type='button'
                           onClick={() => handleDecreaseQuantity(item.id)}
                           className="p-1.5 rounded-l-xs cursor-pointer"
                           aria-label="Decrease quantity"
@@ -240,6 +243,7 @@ const CartPage = () => {
                           aria-label="Quantity"
                         />
                         <button
+                          type='button'
                           onClick={() => handleIncreaseQuantity(item.id)}
                           className="p-1.5 rounded-r-xs cursor-pointer"
                           aria-label="Increase quantity"
@@ -256,6 +260,7 @@ const CartPage = () => {
                       <span className="mr-2 text-sm font-medium pr-2">Cases:</span>
                       <div className="flex items-center border rounded-xs">
                         <button
+                          type='button'
                           onClick={() => handleDecreaseCases(item.id)}
                           className="p-1.5 rounded-l-xs cursor-pointer"
                           aria-label="Decrease cases"
@@ -271,6 +276,7 @@ const CartPage = () => {
                           aria-label="Cases"
                         />
                         <button
+                          type='button'
                           onClick={() => handleIncreaseCases(item.id)}
                           className="p-1.5 rounded-r-xs cursor-pointer"
                           aria-label="Increase cases"

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ShoppingCart, Check } from 'lucide-react';
 import { useCartContext } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import 'react-lazy-load-image-component/src/effects/blur.css';
 
 const ProductCard = ({ product, viewMode = 'grid' }) => {
   const { addToCart } = useCartContext();
@@ -23,6 +25,8 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     ? Math.round((product.discount * product.price) / 100) 
     : 0;
 
+  const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjwvc3ZnPg==';
+
   if (viewMode === 'list') {
     return (
       <div className="flex items-center border border-gray-200 p-2 md:p-4 cursor-pointer"
@@ -30,11 +34,13 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
       title={product.description}
       >
         <div className="w-24 h-24 mr-6 relative">
-          <img
+        <LazyLoadImage
             src={product.image_url}
             alt={product.description}
+            effect="blur"
+            placeholderSrc={placeholderImage}
             className="w-full h-full object-contain"
-            loading='lazy'
+            wrapperClassName="w-full h-full"
           />
           {product.discount > 0 && (
             <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-2 py-1">
@@ -67,6 +73,8 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               </div>
             </div>
             <button 
+              type="button"
+              title="Add to Cart"
               onClick={(e) => handleAddToCart(e)}
               className="relative bg-red-500 text-white px-5 py-5 flex items-center hover:bg-red-600 overflow-hidden"
             >
@@ -110,11 +118,13 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           </div>
         )}
       <div className="relative mb-4">
-        <img
+      <LazyLoadImage
           src={product.image_url}
-          alt={product.name}
+          alt={product.description}
+          effect="blur"
+          placeholderSrc={placeholderImage}
           className="w-full h-48 object-contain"
-          loading='lazy'  
+          wrapperClassName="w-full h-48"
         />
       </div>
 
@@ -138,6 +148,8 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
             </span>
           )}
           <button 
+            type="button"
+            title="Add to Cart"
             onClick={(e) => handleAddToCart(e)}
             className="relative bg-red-500 text-white px-8 py-4 text-xs flex items-center space-x-1 hover:bg-red-600 cursor-pointer overflow-hidden rounded-xs"
           >
@@ -150,7 +162,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               `}
             >
               <ShoppingCart size={12} />
-              <span>Add</span>
+              <span className='font-semibold'>Add</span>
             </div>
 
             {/* Added to Cart Notification */}
@@ -162,7 +174,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               `}
             >
               <Check size={12} />
-              <span>Added</span>
+              <span className='font-semibold'>Added</span>
             </div>
           </button>
         </div>

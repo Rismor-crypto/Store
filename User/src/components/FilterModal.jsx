@@ -20,6 +20,7 @@ const FilterModal = () => {
   return (
     <>
       <button 
+        type="button"
         className="md:hidden flex items-center justify-center w-full p-3 bg-gray-100 rounded-xs mb-4 text-gray-700 hover:bg-gray-200 transition"
         onClick={() => setIsOpen(true)}
       >
@@ -41,12 +42,14 @@ const FilterModal = () => {
               <h2 className="text-lg font-bold text-gray-800">Filter Categories</h2>
               <div className="flex space-x-2">
                 <button 
+                  type="button"
                   onClick={handleReset}
                   className="text-sm text-gray-600 hover:text-red-500 transition"
                 >
                   Reset
                 </button>
                 <button 
+                  type="button"
                   onClick={handleClose}
                   className="text-gray-600 hover:text-red-500 transition"
                 >
