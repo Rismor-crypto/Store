@@ -69,7 +69,6 @@ const ProductGrid = () => {
         </div>
       )}
      
-      {/* Pass the selected category to Pagination */}
       <Pagination currentCategory={selectedCategory} />
     </div>
   );

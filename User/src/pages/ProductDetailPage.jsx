@@ -212,6 +212,7 @@ const ProductDetailPage = () => {
               src={product.image_url || '/placeholder-image.png'}
               alt={product.description}
               className="max-w-full h-auto max-h-96 object-contain"
+              loading='eager'
             />
           </div>
 
@@ -367,6 +368,7 @@ const ProductDetailPage = () => {
                     src={product.image_url}
                     alt={product.name}
                     className="w-full h-48 object-cover"
+                    loading='lazy'
                   />
                 </div>
           

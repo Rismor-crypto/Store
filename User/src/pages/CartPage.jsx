@@ -176,6 +176,7 @@ const CartPage = () => {
                       src={item.image_url}
                       alt={item.description}
                       className="w-full h-full object-cover rounded-md"
+                      loading="lazy"
                     />
                   </div>
 

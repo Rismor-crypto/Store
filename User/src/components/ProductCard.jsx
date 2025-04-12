@@ -34,6 +34,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
             src={product.image_url}
             alt={product.description}
             className="w-full h-full object-contain"
+            loading='lazy'
           />
           {product.discount > 0 && (
             <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-2 py-1">
@@ -113,6 +114,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           src={product.image_url}
           alt={product.name}
           className="w-full h-48 object-contain"
+          loading='lazy'  
         />
       </div>
 
