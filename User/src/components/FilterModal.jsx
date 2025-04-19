@@ -21,7 +21,7 @@ const FilterModal = () => {
     <>
       <button 
         type="button"
-        className="md:hidden flex items-center justify-center w-full p-3 bg-gray-100 rounded-xs mb-4 text-gray-700 hover:bg-gray-200 transition"
+        className="md:hidden flex items-center justify-center w-full p-3 bg-red-600 rounded-xs mb-4 text-white transition"
         onClick={() => setIsOpen(true)}
       >
         <Filter className="mr-2" size={20} /> 

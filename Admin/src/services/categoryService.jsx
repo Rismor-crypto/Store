@@ -1,6 +1,5 @@
 import supabase from '../utils/supabase';
 
-// Transform flat list to tree structure
 export const transformToTree = (categories, parentId = null) => {
   return categories
     .filter(category => category.parent_id === parentId)
@@ -10,31 +9,6 @@ export const transformToTree = (categories, parentId = null) => {
     }));
 };
 
-// Check if category with the same name exists
-export const nameExists = async (name, excludeId = null) => {
-  try {
-    let query = supabase
-      .from('categories')
-      .select('name')
-      .eq('name', name);
-    
-    // If excludeId is provided, exclude that category from the check
-    // (useful for updates where we don't want to match the current category)
-    if (excludeId) {
-      query = query.neq('id', excludeId);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    return data.length > 0;
-  } catch (error) {
-    console.error('Error checking if name exists:', error);
-    throw new Error(`Failed to check if name exists: ${error.message}`);
-  }
-};
-
-// Fetch all categories
 export const fetchCategories = async () => {
   try {
     const { data, error } = await supabase
@@ -51,21 +25,12 @@ export const fetchCategories = async () => {
   }
 };
 
-// Add a new category
 export const addCategory = async (categoryData) => {
   try {
-    // Validate required fields
     if (!categoryData.name || categoryData.name.trim() === '') {
       throw new Error('Category name is required');
     }
     
-    // Check for name uniqueness
-    const exists = await nameExists(categoryData.name);
-    if (exists) {
-      throw new Error('A category with this name already exists');
-    }
-    
-    // If parent_id is provided, verify it exists
     if (categoryData.parent_id) {
       const { data, error } = await supabase
         .from('categories')
@@ -91,12 +56,10 @@ export const addCategory = async (categoryData) => {
   }
 };
 
-// Update an existing category
 export const updateCategory = async (categoryData) => {
   try {
     const { id, ...fields } = categoryData;
     
-    // Validate required fields
     if (!id) {
       throw new Error('Category ID is required for updates');
     }
@@ -105,7 +68,6 @@ export const updateCategory = async (categoryData) => {
       throw new Error('Category name cannot be empty');
     }
     
-    // Check if category exists
     const { data: existingCategory, error: checkError } = await supabase
       .from('categories')
       .select('*')
@@ -116,29 +78,17 @@ export const updateCategory = async (categoryData) => {
       throw new Error('Category not found');
     }
     
-    // Check for name uniqueness (excluding current category)
-    if (fields.name && fields.name !== existingCategory.name) {
-      const exists = await nameExists(fields.name, id);
-      if (exists) {
-        throw new Error('A category with this name already exists');
-      }
-    }
-    
-    // Prevent setting parent to itself or its descendants (avoid circular references)
     if (fields.parent_id && fields.parent_id !== existingCategory.parent_id) {
-      // Check if the new parent is not the category itself
       if (fields.parent_id === id) {
         throw new Error('A category cannot be its own parent');
       }
       
-      // Get all categories to check for circular references
       const { data: allCategories, error: fetchError } = await supabase
         .from('categories')
         .select('*');
         
       if (fetchError) throw fetchError;
       
-      // Check if new parent is not a descendant
       const isDescendant = (parentId, childId) => {
         const children = allCategories.filter(c => c.parent_id === childId);
         return children.some(child => child.id === parentId || isDescendant(parentId, child.id));
@@ -163,10 +113,95 @@ export const updateCategory = async (categoryData) => {
   }
 };
 
-// Delete a category and all its subcategories and related products
+export const moveCategory = async (categoryId, newParentId = null, maxLevel = 2) => {
+  try {
+    if (!categoryId) {
+      throw new Error('Category ID is required');
+    }
+
+    const { data: category, error: categoryError } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', categoryId)
+      .single();
+      
+    if (categoryError || !category) {
+      throw new Error('Category not found');
+    }
+
+    if (newParentId) {
+      const { data: parentCategory, error: parentError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('id', newParentId)
+        .single();
+        
+      if (parentError || !parentCategory) {
+        throw new Error('Parent category not found');
+      }
+
+      if (newParentId === categoryId) {
+        throw new Error('A category cannot be its own parent');
+      }
+
+      const { data: allCategories, error: fetchError } = await supabase
+        .from('categories')
+        .select('*');
+        
+      if (fetchError) throw fetchError;
+
+      const isDescendant = (parentId, childId) => {
+        const children = allCategories.filter(c => c.parent_id === childId);
+        return children.some(child => child.id === parentId || isDescendant(parentId, child.id));
+      };
+      
+      if (isDescendant(categoryId, newParentId)) {
+        throw new Error('Cannot set a descendant as parent (circular reference)');
+      }
+
+      const getLevel = (cat, level = 0) => {
+        if (!cat.parent_id) return level;
+        const parent = allCategories.find(c => c.id === cat.parent_id);
+        if (!parent) return level;
+        return getLevel(parent, level + 1);
+      };
+
+      const parentLevel = getLevel(parentCategory);
+      
+      const getDescendants = (id) => {
+        const direct = allCategories.filter(c => c.parent_id === id);
+        let all = [...direct];
+        direct.forEach(child => {
+          all = [...all, ...getDescendants(child.id)];
+        });
+        return all;
+      };
+
+      const descendants = getDescendants(categoryId);
+      const deepestDescendantLevel = descendants.length > 0 ? 
+        Math.max(...descendants.map(d => getLevel(d))) - getLevel(category) : 0;
+
+      if (parentLevel + 1 + deepestDescendantLevel > maxLevel) {
+        throw new Error(`Moving this category would exceed the maximum category depth of ${maxLevel}`);
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('categories')
+      .update({ parent_id: newParentId })
+      .eq('id', categoryId)
+      .select();
+      
+    if (error) throw error;
+    return data[0];
+  } catch (error) {
+    console.error('Error moving category:', error);
+    throw new Error(`Failed to move category: ${error.message}`);
+  }
+};
+
 export const deleteCategory = async (id) => {
   try {
-    // Check if category exists
     const { data: category, error: categoryError } = await supabase
       .from('categories')
       .select('*')
@@ -177,14 +212,12 @@ export const deleteCategory = async (id) => {
       throw new Error('Category not found');
     }
     
-    // Get all categories to identify descendant categories
     const { data: allCategories, error: fetchError } = await supabase
       .from('categories')
       .select('*');
       
     if (fetchError) throw fetchError;
     
-    // Identify all descendant category IDs (including nested subcategories)
     const getDescendantIds = (parentId) => {
       const descendants = [];
       
@@ -204,16 +237,13 @@ export const deleteCategory = async (id) => {
     const descendantIds = getDescendantIds(id);
     const allIdsToDelete = [id, ...descendantIds];
     
-    // Start a transaction to ensure all related deletions succeed or fail together
     const { error: transactionError } = await supabase.rpc('delete_category_cascade', {
       category_ids: allIdsToDelete
     });
     
-    // If the RPC function doesn't exist, fall back to separate operations
     if (transactionError) {
       console.warn('RPC function not available, falling back to separate operations');
       
-      // First delete all products related to these categories
       const { error: productsError } = await supabase
         .from('products')
         .delete()
@@ -221,8 +251,6 @@ export const deleteCategory = async (id) => {
         
       if (productsError) throw productsError;
       
-      // Then delete all categories in reverse order (children first)
-      // Starting with descendant categories
       for (const catId of descendantIds) {
         const { error } = await supabase
           .from('categories')
@@ -232,7 +260,6 @@ export const deleteCategory = async (id) => {
         if (error) throw error;
       }
       
-      // Finally delete the main category
       const { error } = await supabase
         .from('categories')
         .delete()
@@ -248,7 +275,6 @@ export const deleteCategory = async (id) => {
   }
 };
 
-// Get flattened category path for breadcrumbs
 export const getCategoryPath = (categories, categoryId) => {
   try {
     const path = [];

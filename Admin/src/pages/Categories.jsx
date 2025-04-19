@@ -3,7 +3,7 @@ import { Plus, Loader } from 'lucide-react';
 import CategoryTree from '../components/categories/CategoryTree';
 import CategoryForm from '../components/categories/CategoryForm';
 import Notification from '../components/common/Notification';
-import { fetchCategories, addCategory, updateCategory, deleteCategory } from '../services/categoryService';
+import { fetchCategories, addCategory, updateCategory, deleteCategory, moveCategory } from '../services/categoryService';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -13,6 +13,7 @@ const Categories = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [selectedParentId, setSelectedParentId] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [isMoving, setIsMoving] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -98,6 +99,41 @@ const Categories = () => {
     }
   };
   
+  const handleMoveCategory = async (categoryId, newParentId) => {
+    // Prevent unnecessary updates if parent hasn't changed
+    const findCategoryById = (cats, id) => {
+      for (const cat of cats) {
+        if (cat.id === id) {
+          return cat;
+        }
+        if (cat.children && cat.children.length > 0) {
+          const found = findCategoryById(cat.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    
+    const category = findCategoryById(categories, categoryId);
+    
+    // If category not found or parent hasn't changed, do nothing
+    if (!category) return;
+    if (category.parent_id === newParentId) return;
+    
+    setIsMoving(true);
+    try {
+      await moveCategory(categoryId, newParentId);
+      await loadCategories();
+      showNotification('Category moved successfully', 'success');
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to move category';
+      showNotification(errorMessage, 'error');
+      console.error(err);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+  
   const handleAddSubcategory = (parentId) => {
     setEditingCategory(null);
     setSelectedParentId(parentId);
@@ -145,6 +181,16 @@ const Categories = () => {
         />
       )}
       
+      {/* Show a global loading state for moving categories */}
+      {isMoving && (
+        <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow p-4 flex items-center">
+            <Loader className="h-6 w-6 animate-spin text-blue-600 mr-3" />
+            <p>Moving category...</p>
+          </div>
+        </div>
+      )}
+      
       {isLoading ? (
         <div className="flex justify-center items-center h-full -mt-20">
           <div className="flex flex-col items-center justify-center min-h-screen">
@@ -173,6 +219,7 @@ const Categories = () => {
             onEdit={openEditForm} 
             onDelete={handleDeleteCategory}
             onAdd={handleAddSubcategory}
+            onMove={handleMoveCategory}
           />
         </div>
       )}

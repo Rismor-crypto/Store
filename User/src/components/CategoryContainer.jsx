@@ -64,6 +64,8 @@ const CategoryItem = ({
             : 'text-gray-700 hover:text-red-600'}
         `}
         onClick={handleCategoryClick}
+        data-category-id={category.id}
+        data-is-parent={hasChildren ? "true" : "false"}
       >
         <span className={`text-sm flex-grow ${depth > 0 ? 'pl-2' : ''}`}>
           {category.name}
@@ -112,6 +114,8 @@ const CategoryContainer = ({ isMobile = false, onCategorySelected = null }) => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const [expandedCategories, setExpandedCategories] = useState([]);
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const scrollThreshold = 50; // Pixels to scroll before auto-expanding
 
   // Auto-expand parent of selected category, if any
   useEffect(() => {
@@ -146,6 +150,55 @@ const CategoryContainer = ({ isMobile = false, onCategorySelected = null }) => {
       }
     }
   }, [selectedCategory, categories, expandedCategories]);
+
+  // Function to collect all top-level/grandparent category IDs
+  const getTopLevelCategoryIds = useCallback(() => {
+    return categories
+      .filter(category => category.children && category.children.length > 0)
+      .map(category => category.id);
+  }, [categories]);
+
+  // Handle scroll events to auto-expand categories on mobile
+  const handleScroll = useCallback((e) => {
+    if (!isMobile || !containerRef.current) return;
+
+    const currentScrollTop = e.target.scrollTop;
+    const scrollDifference = currentScrollTop - lastScrollPosition;
+    
+    // If user has scrolled down more than threshold, auto-expand parent categories
+    if (scrollDifference > scrollThreshold) {
+      const topLevelCategoryIds = getTopLevelCategoryIds();
+      
+      // Find parent categories that aren't already expanded
+      const categoriesToExpand = topLevelCategoryIds.filter(
+        id => !expandedCategories.includes(id)
+      );
+      
+      // Expand these categories
+      if (categoriesToExpand.length > 0) {
+        setExpandedCategories(prev => [...prev, ...categoriesToExpand]);
+      }
+      
+      // Update the last scroll position
+      setLastScrollPosition(currentScrollTop);
+    }
+  }, [isMobile, lastScrollPosition, expandedCategories, getTopLevelCategoryIds]);
+
+  // Set up scroll listener for the parent container (FilterModal)
+  useEffect(() => {
+    if (isMobile && containerRef.current) {
+      // Find the closest scrollable parent (should be the modal's content area)
+      let scrollableParent = containerRef.current.closest('.overflow-y-auto');
+      
+      if (scrollableParent) {
+        scrollableParent.addEventListener('scroll', handleScroll);
+        
+        return () => {
+          scrollableParent.removeEventListener('scroll', handleScroll);
+        };
+      }
+    }
+  }, [isMobile, handleScroll]);
 
   // Function to reset when "All Products" is clicked
   const handleAllProductsClick = () => {
@@ -186,7 +239,7 @@ const CategoryContainer = ({ isMobile = false, onCategorySelected = null }) => {
         <span className="text-sm font-medium">All Products</span>
       </div>
 
-      {/* Category Tree Container - No Scroll */}
+      {/* Category Tree Container */}
       <div 
         ref={containerRef}
         className="space-y-2 pr-2 overflow-visible"

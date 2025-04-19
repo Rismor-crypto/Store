@@ -127,7 +127,7 @@ const HomePage = () => {
     <main className='font-noto'>
       <div className="mx-auto px-4 py-6">
         
-        <FilterModal />
+        
         
         <div className="flex flex-col md:flex-row gap-6 w-full">
           <div className="hidden md:block w-full md:w-1/4">
@@ -142,6 +142,7 @@ const HomePage = () => {
                 </div>
               </div>
             )}
+            
             
             {searchQuery && (
               <div className="mb-6 p-3 bg-gray-100 rounded flex items-center justify-between">
@@ -161,6 +162,7 @@ const HomePage = () => {
             )}
             
             {showSpecialOffers && <SpecialOffersSection />}
+            <FilterModal />
             <ProductGrid />
           </div>
         </div>
