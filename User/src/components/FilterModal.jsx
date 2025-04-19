@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Filter, X } from 'lucide-react';
 import { useProductContext } from '../context/ProductContext';
 import CategoryContainer from './CategoryContainer';
@@ -8,9 +8,36 @@ const FilterModal = () => {
   const { fetchProducts, categories } = useProductContext();
   const modalContentRef = useRef(null);
   const [expandedCategories, setExpandedCategories] = useState([]);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const scrollThreshold = 20; // Smaller threshold to make it more responsive
-  const [hasScrolled, setHasScrolled] = useState(false);
+
+  // Function to get all top-level and second-level category IDs
+  const getSecondLevelExpansion = () => {
+    let ids = [];
+    // Add all top-level categories and their immediate children
+    categories.forEach(category => {
+      ids.push(category.id);
+      if (category.children && category.children.length > 0) {
+        category.children.forEach(child => {
+          ids.push(child.id);
+        });
+      }
+    });
+    return ids;
+  };
+
+  // When modal opens, expand to second level and disable body scrolling
+  useEffect(() => {
+    if (isOpen) {
+      // Set categories to be expanded to second level by default
+      setExpandedCategories(getSecondLevelExpansion());
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, categories]);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -20,151 +47,10 @@ const FilterModal = () => {
   const handleReset = () => {
     // Reset to default view (all products)
     fetchProducts();
-    setExpandedCategories([]);
+    setExpandedCategories(getSecondLevelExpansion());
     setIsOpen(false);
     document.body.style.overflow = '';
   };
-
-  // When modal opens, disable body scrolling
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      setHasScrolled(false); // Reset scroll state when modal opens
-    } else {
-      document.body.style.overflow = '';
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  // Find all parent categories that have children
-  const getParentCategories = useCallback(() => {
-    return categories.filter(category => category.children && category.children.length > 0);
-  }, [categories]);
-
-  // Function to recursively find all category IDs including children at any level
-  const getAllCategoryIds = useCallback((categoryList) => {
-    let ids = [];
-    for (const category of categoryList) {
-      ids.push(category.id);
-      
-      if (category.children && category.children.length > 0) {
-        ids = [...ids, ...getAllCategoryIds(category.children)];
-      }
-    }
-    return ids;
-  }, []);
-  
-  // Get all categories and their children up to grandchild level
-  const expandCategoriesUpToGrandchildren = useCallback(() => {
-    const allExpandedIds = [];
-    
-    // Function to recursively collect IDs up to a specific depth
-    const collectIdsUpToDepth = (categoryList, currentDepth = 0, maxDepth = 2) => {
-      let ids = [];
-      
-      for (const category of categoryList) {
-        // Add this category's ID
-        ids.push(category.id);
-        
-        // Only go deeper if we haven't reached max depth and category has children
-        if (currentDepth < maxDepth && category.children && category.children.length > 0) {
-          // Collect children at next depth level
-          const childIds = collectIdsUpToDepth(category.children, currentDepth + 1, maxDepth);
-          ids = [...ids, ...childIds];
-        }
-      }
-      
-      return ids;
-    };
-    
-    // Start from top-level categories and collect IDs up to grandchild level
-    return collectIdsUpToDepth(categories, 0, 2); // Depth 0 = parent, 1 = child, 2 = grandchild
-  }, [categories]);
-
-  // Function to expand a category and all its children
-  const expandCategoryWithChildren = useCallback((categoryId) => {
-    // Find the category
-    const findCategory = (catList, id) => {
-      for (const cat of catList) {
-        if (cat.id === id) return cat;
-        if (cat.children && cat.children.length > 0) {
-          const found = findCategory(cat.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    const category = findCategory(categories, categoryId);
-    if (!category) return [];
-    
-    // Get all child category IDs
-    let allIds = [categoryId];
-    if (category.children && category.children.length > 0) {
-      allIds = [...allIds, ...getAllCategoryIds(category.children)];
-    }
-    
-    return allIds;
-  }, [categories, getAllCategoryIds]);
-
-  // Handle scroll events in the modal content
-  const handleScroll = useCallback((e) => {
-    const currentScrollY = e.target.scrollTop;
-    const isScrollingDown = currentScrollY > lastScrollY;
-    
-    // If this is the first scroll action, expand all categories to grandchild level
-    if (!hasScrolled) {
-      const grandchildIds = expandCategoriesUpToGrandchildren();
-      setExpandedCategories(grandchildIds);
-      setHasScrolled(true);
-      setLastScrollY(currentScrollY);
-      return;
-    }
-    
-    // If scrolling down more than the threshold, continue with original behavior
-    if (isScrollingDown && (currentScrollY - lastScrollY) > scrollThreshold) {
-      const parentCategories = getParentCategories();
-      
-      let newExpandedCategories = [...expandedCategories];
-      let hasChanges = false;
-      
-      // For each parent category not already expanded
-      parentCategories.forEach(category => {
-        if (!expandedCategories.includes(category.id)) {
-          // Add all children IDs
-          const idsToAdd = expandCategoryWithChildren(category.id);
-          idsToAdd.forEach(id => {
-            if (!newExpandedCategories.includes(id)) {
-              newExpandedCategories.push(id);
-              hasChanges = true;
-            }
-          });
-        }
-      });
-      
-      if (hasChanges) {
-        setExpandedCategories(newExpandedCategories);
-      }
-    }
-    
-    setLastScrollY(currentScrollY);
-  }, [lastScrollY, expandedCategories, hasScrolled, getParentCategories, expandCategoryWithChildren, expandCategoriesUpToGrandchildren]);
-
-  // Attach scroll listener to modal content when open
-  useEffect(() => {
-    const modalContentElement = modalContentRef.current;
-    
-    if (isOpen && modalContentElement) {
-      modalContentElement.addEventListener('scroll', handleScroll);
-      
-      return () => {
-        modalContentElement.removeEventListener('scroll', handleScroll);
-      };
-    }
-  }, [isOpen, handleScroll]);
 
   // Prevent click events on modal content from bubbling up
   const handleModalContentClick = (e) => {

@@ -13,40 +13,11 @@ const CategoryItem = ({
   parentId = null,
   isMobile = false,
   onCategorySelected = null,
-  allCategories // Pass all categories from parent
+  allCategories
 }) => {
   const navigate = useNavigate();
   const hasChildren = category.children && category.children.length > 0;
   const isExpanded = expandedCategories.includes(category.id);
-
-  // For tap handling - expand only to second level
-  const expandCategoryToSecondLevel = (categoryId) => {
-    // Find the category in the tree
-    const findCategory = (catList, id) => {
-      for (const cat of catList) {
-        if (cat.id === id) return cat;
-        if (cat.children && cat.children.length > 0) {
-          const found = findCategory(cat.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-
-    // Use categories passed as props instead of from context
-    const category = findCategory(allCategories, categoryId);
-    if (!category) return [];
-
-    // Include this category and its immediate children
-    const idsToExpand = [categoryId];
-    if (category.children && category.children.length > 0) {
-      category.children.forEach(child => {
-        idsToExpand.push(child.id);
-      });
-    }
-
-    return idsToExpand;
-  };
 
   const handleCategoryClick = () => {
     // Only navigate if this category has no children
@@ -59,35 +30,25 @@ const CategoryItem = ({
         onCategorySelected();
       }
     } else {
-      // If it has children, toggle expansion with second-level only
-      toggleExpansion();
-    }
-  };
-
-  const toggleExpansion = () => {
-    // If already expanded, collapse it
-    if (isExpanded) {
-      setExpandedCategories(expandedCategories.filter(id => id !== category.id));
-    } else {
-      // Otherwise expand to second level only (not grandchildren)
-      const idsToExpand = expandCategoryToSecondLevel(category.id);
-      
-      // Keep any previously expanded categories and add new ones
-      const newExpandedCategories = [...expandedCategories];
-      idsToExpand.forEach(id => {
-        if (!newExpandedCategories.includes(id)) {
-          newExpandedCategories.push(id);
-        }
-      });
-      
-      setExpandedCategories(newExpandedCategories);
+      // If it has children, toggle expansion
+      if (isExpanded) {
+        setExpandedCategories(expandedCategories.filter(id => id !== category.id));
+      } else {
+        // Add this category's ID to expanded list
+        setExpandedCategories([...expandedCategories, category.id]);
+      }
     }
   };
 
   const handleChevronClick = (e) => {
     // Stop event propagation to prevent category click handler
     e.stopPropagation();
-    toggleExpansion();
+    
+    if (isExpanded) {
+      setExpandedCategories(expandedCategories.filter(id => id !== category.id));
+    } else {
+      setExpandedCategories([...expandedCategories, category.id]);
+    }
   };
 
   // Calculate padding based on depth
@@ -151,7 +112,6 @@ const CategoryItem = ({
 const CategoryContainer = ({ 
   isMobile = false, 
   onCategorySelected = null,
-  // Accept external control of expanded categories
   expandedCategories: externalExpandedCategories = null,
   setExpandedCategories: externalSetExpandedCategories = null
 }) => {
@@ -167,6 +127,26 @@ const CategoryContainer = ({
   
   const setExpandedCategories = externalSetExpandedCategories !== null ?
     externalSetExpandedCategories : setInternalExpandedCategories;
+
+  // When on mobile, initialize with top-level and second-level categories expanded
+  useEffect(() => {
+    if (isMobile && categories.length > 0) {
+      // Initialize expanded categories for mobile
+      const getSecondLevelIds = () => {
+        let ids = [];
+        // Add all top-level categories
+        categories.forEach(category => {
+          ids.push(category.id);
+        });
+        return ids;
+      };
+      
+      // Only set this if no categories are expanded yet
+      if (expandedCategories.length === 0) {
+        setExpandedCategories(getSecondLevelIds());
+      }
+    }
+  }, [categories, isMobile, expandedCategories.length, setExpandedCategories]);
 
   // Auto-expand parent of selected category, if any
   useEffect(() => {
@@ -206,7 +186,12 @@ const CategoryContainer = ({
   const handleAllProductsClick = () => {
     setSelectedCategory(null); // Clear selected category
     setSearchQuery(''); // Clear search query
-    setExpandedCategories([]); // Collapse all categories
+    
+    // Don't collapse on mobile - maintain second level expansion
+    if (!isMobile) {
+      setExpandedCategories([]); // Collapse all categories
+    }
+    
     navigate('/products');
     
     // If we're in mobile mode and have a callback, call it to close the modal
@@ -253,7 +238,7 @@ const CategoryContainer = ({
             setExpandedCategories={setExpandedCategories}
             isMobile={isMobile}
             onCategorySelected={onCategorySelected}
-            allCategories={categories} // Pass all categories to each CategoryItem
+            allCategories={categories}
           />
         ))}
       </div>
