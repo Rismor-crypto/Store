@@ -31,24 +31,22 @@ const CategoryItem = ({
       }
     } else {
       // If it has children, toggle expansion
-      if (isExpanded) {
-        setExpandedCategories(expandedCategories.filter(id => id !== category.id));
-      } else {
-        // Add this category's ID to expanded list
-        setExpandedCategories([...expandedCategories, category.id]);
-      }
+      toggleExpansion();
+    }
+  };
+
+  const toggleExpansion = () => {
+    if (isExpanded) {
+      setExpandedCategories(expandedCategories.filter(id => id !== category.id));
+    } else {
+      setExpandedCategories([...expandedCategories, category.id]);
     }
   };
 
   const handleChevronClick = (e) => {
     // Stop event propagation to prevent category click handler
     e.stopPropagation();
-    
-    if (isExpanded) {
-      setExpandedCategories(expandedCategories.filter(id => id !== category.id));
-    } else {
-      setExpandedCategories([...expandedCategories, category.id]);
-    }
+    toggleExpansion();
   };
 
   // Calculate padding based on depth
@@ -128,25 +126,14 @@ const CategoryContainer = ({
   const setExpandedCategories = externalSetExpandedCategories !== null ?
     externalSetExpandedCategories : setInternalExpandedCategories;
 
-  // When on mobile, initialize with top-level and second-level categories expanded
+  // When on mobile, but not receiving external expansion state, initialize with top-level categories expanded
   useEffect(() => {
-    if (isMobile && categories.length > 0) {
-      // Initialize expanded categories for mobile
-      const getSecondLevelIds = () => {
-        let ids = [];
-        // Add all top-level categories
-        categories.forEach(category => {
-          ids.push(category.id);
-        });
-        return ids;
-      };
-      
-      // Only set this if no categories are expanded yet
-      if (expandedCategories.length === 0) {
-        setExpandedCategories(getSecondLevelIds());
-      }
+    if (isMobile && externalExpandedCategories === null && categories.length > 0 && internalExpandedCategories.length === 0) {
+      // Only include the top-level categories 
+      const topLevelIds = categories.map(category => category.id);
+      setInternalExpandedCategories(topLevelIds);
     }
-  }, [categories, isMobile, expandedCategories.length, setExpandedCategories]);
+  }, [categories, isMobile, internalExpandedCategories.length, externalExpandedCategories]);
 
   // Auto-expand parent of selected category, if any
   useEffect(() => {
@@ -187,9 +174,12 @@ const CategoryContainer = ({
     setSelectedCategory(null); // Clear selected category
     setSearchQuery(''); // Clear search query
     
-    // Don't collapse on mobile - maintain second level expansion
-    if (!isMobile) {
-      setExpandedCategories([]); // Collapse all categories
+    // On mobile, keep only top-level expanded
+    if (isMobile) {
+      const topLevelIds = categories.map(category => category.id);
+      setExpandedCategories(topLevelIds);
+    } else {
+      setExpandedCategories([]);
     }
     
     navigate('/products');

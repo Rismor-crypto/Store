@@ -9,26 +9,17 @@ const FilterModal = () => {
   const modalContentRef = useRef(null);
   const [expandedCategories, setExpandedCategories] = useState([]);
 
-  // Function to get all top-level and second-level category IDs
-  const getSecondLevelExpansion = () => {
-    let ids = [];
-    // Add all top-level categories and their immediate children
-    categories.forEach(category => {
-      ids.push(category.id);
-      if (category.children && category.children.length > 0) {
-        category.children.forEach(child => {
-          ids.push(child.id);
-        });
-      }
-    });
-    return ids;
+  // Function to get ONLY top-level category IDs for initial expansion
+  const getTopLevelExpansion = () => {
+    // Only include the top-level categories, not their children
+    return categories.map(category => category.id);
   };
 
-  // When modal opens, expand to second level and disable body scrolling
+  // When modal opens, expand only top-level categories and disable body scrolling
   useEffect(() => {
     if (isOpen) {
-      // Set categories to be expanded to second level by default
-      setExpandedCategories(getSecondLevelExpansion());
+      // Only expand top-level categories by default
+      setExpandedCategories(getTopLevelExpansion());
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -47,7 +38,8 @@ const FilterModal = () => {
   const handleReset = () => {
     // Reset to default view (all products)
     fetchProducts();
-    setExpandedCategories(getSecondLevelExpansion());
+    // Only expand top-level categories
+    setExpandedCategories(getTopLevelExpansion());
     setIsOpen(false);
     document.body.style.overflow = '';
   };
