@@ -10,6 +10,7 @@ const FilterModal = () => {
   const [expandedCategories, setExpandedCategories] = useState([]);
   const [lastScrollY, setLastScrollY] = useState(0);
   const scrollThreshold = 20; // Smaller threshold to make it more responsive
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -28,6 +29,7 @@ const FilterModal = () => {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      setHasScrolled(false); // Reset scroll state when modal opens
     } else {
       document.body.style.overflow = '';
     }
@@ -38,7 +40,6 @@ const FilterModal = () => {
   }, [isOpen]);
 
   // Find all parent categories that have children
-  // Now properly defined outside of event handler and using the categories from context
   const getParentCategories = useCallback(() => {
     return categories.filter(category => category.children && category.children.length > 0);
   }, [categories]);
@@ -56,6 +57,33 @@ const FilterModal = () => {
     return ids;
   }, []);
   
+  // Get all categories and their children up to grandchild level
+  const expandCategoriesUpToGrandchildren = useCallback(() => {
+    const allExpandedIds = [];
+    
+    // Function to recursively collect IDs up to a specific depth
+    const collectIdsUpToDepth = (categoryList, currentDepth = 0, maxDepth = 2) => {
+      let ids = [];
+      
+      for (const category of categoryList) {
+        // Add this category's ID
+        ids.push(category.id);
+        
+        // Only go deeper if we haven't reached max depth and category has children
+        if (currentDepth < maxDepth && category.children && category.children.length > 0) {
+          // Collect children at next depth level
+          const childIds = collectIdsUpToDepth(category.children, currentDepth + 1, maxDepth);
+          ids = [...ids, ...childIds];
+        }
+      }
+      
+      return ids;
+    };
+    
+    // Start from top-level categories and collect IDs up to grandchild level
+    return collectIdsUpToDepth(categories, 0, 2); // Depth 0 = parent, 1 = child, 2 = grandchild
+  }, [categories]);
+
   // Function to expand a category and all its children
   const expandCategoryWithChildren = useCallback((categoryId) => {
     // Find the category
@@ -87,7 +115,16 @@ const FilterModal = () => {
     const currentScrollY = e.target.scrollTop;
     const isScrollingDown = currentScrollY > lastScrollY;
     
-    // If scrolling down more than the threshold
+    // If this is the first scroll action, expand all categories to grandchild level
+    if (!hasScrolled) {
+      const grandchildIds = expandCategoriesUpToGrandchildren();
+      setExpandedCategories(grandchildIds);
+      setHasScrolled(true);
+      setLastScrollY(currentScrollY);
+      return;
+    }
+    
+    // If scrolling down more than the threshold, continue with original behavior
     if (isScrollingDown && (currentScrollY - lastScrollY) > scrollThreshold) {
       const parentCategories = getParentCategories();
       
@@ -114,7 +151,7 @@ const FilterModal = () => {
     }
     
     setLastScrollY(currentScrollY);
-  }, [lastScrollY, expandedCategories, getParentCategories, expandCategoryWithChildren]);
+  }, [lastScrollY, expandedCategories, hasScrolled, getParentCategories, expandCategoryWithChildren, expandCategoriesUpToGrandchildren]);
 
   // Attach scroll listener to modal content when open
   useEffect(() => {

@@ -12,11 +12,41 @@ const CategoryItem = ({
   setExpandedCategories,
   parentId = null,
   isMobile = false,
-  onCategorySelected = null
+  onCategorySelected = null,
+  allCategories // Pass all categories from parent
 }) => {
   const navigate = useNavigate();
   const hasChildren = category.children && category.children.length > 0;
   const isExpanded = expandedCategories.includes(category.id);
+
+  // For tap handling - expand only to second level
+  const expandCategoryToSecondLevel = (categoryId) => {
+    // Find the category in the tree
+    const findCategory = (catList, id) => {
+      for (const cat of catList) {
+        if (cat.id === id) return cat;
+        if (cat.children && cat.children.length > 0) {
+          const found = findCategory(cat.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Use categories passed as props instead of from context
+    const category = findCategory(allCategories, categoryId);
+    if (!category) return [];
+
+    // Include this category and its immediate children
+    const idsToExpand = [categoryId];
+    if (category.children && category.children.length > 0) {
+      category.children.forEach(child => {
+        idsToExpand.push(child.id);
+      });
+    }
+
+    return idsToExpand;
+  };
 
   const handleCategoryClick = () => {
     // Only navigate if this category has no children
@@ -29,7 +59,7 @@ const CategoryItem = ({
         onCategorySelected();
       }
     } else {
-      // If it has children, toggle expansion
+      // If it has children, toggle expansion with second-level only
       toggleExpansion();
     }
   };
@@ -39,8 +69,18 @@ const CategoryItem = ({
     if (isExpanded) {
       setExpandedCategories(expandedCategories.filter(id => id !== category.id));
     } else {
-      // Otherwise add this one to expanded categories
-      setExpandedCategories([...expandedCategories, category.id]);
+      // Otherwise expand to second level only (not grandchildren)
+      const idsToExpand = expandCategoryToSecondLevel(category.id);
+      
+      // Keep any previously expanded categories and add new ones
+      const newExpandedCategories = [...expandedCategories];
+      idsToExpand.forEach(id => {
+        if (!newExpandedCategories.includes(id)) {
+          newExpandedCategories.push(id);
+        }
+      });
+      
+      setExpandedCategories(newExpandedCategories);
     }
   };
 
@@ -99,6 +139,7 @@ const CategoryItem = ({
               parentId={category.id}
               isMobile={isMobile}
               onCategorySelected={onCategorySelected}
+              allCategories={allCategories}
             />
           ))}
         </div>
@@ -212,6 +253,7 @@ const CategoryContainer = ({
             setExpandedCategories={setExpandedCategories}
             isMobile={isMobile}
             onCategorySelected={onCategorySelected}
+            allCategories={categories} // Pass all categories to each CategoryItem
           />
         ))}
       </div>
