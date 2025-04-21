@@ -8,6 +8,7 @@ import CheckoutPage from './pages/CheckoutPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import { ShoppingModeProvider } from './context/ShoppingModeContext';
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -20,25 +21,29 @@ const ScrollToTop = () => {
 };
 
 function App() {
+  const { pathname } = useLocation();
+
   return (
-    <Router className="">
+    <>
       <ScrollToTop />
-      <ProductProvider>
-        <CartProvider>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<HomePage />} />
-            <Route path="/products/category/:categoryId" element={<HomePage />} />
-            <Route path="/offers" element={<HomePage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
-          </Routes>
-          <Footer />
-        </CartProvider>
-      </ProductProvider>
-    </Router>
+      <ShoppingModeProvider>
+        <ProductProvider>
+          <CartProvider>
+            {pathname !== '/checkout' && <Navbar />}
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<HomePage />} />
+              <Route path="/products/category/:categoryId" element={<HomePage />} />
+              <Route path="/offers" element={<HomePage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
+            </Routes>
+            {pathname !== '/checkout' && <Footer />}
+          </CartProvider>
+        </ProductProvider>
+      </ShoppingModeProvider>
+    </>
   );
 }
 

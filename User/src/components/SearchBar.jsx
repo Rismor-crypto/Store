@@ -3,32 +3,36 @@ import { Loader2, PackageX, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import supabase from '../utils/supabase';
 import { useProductContext } from '../context/ProductContext';
+import { useShoppingMode } from '../context/ShoppingModeContext';
+import { calculateProductScore } from '../utils/helper';
 
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false); // Track if a search was performed
   const searchRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { fetchProducts, setSearchQuery, setSelectedCategory } = useProductContext();
+  const { setSearchQuery, setSelectedCategory } = useProductContext();
+  const { isWholesaleMode } = useShoppingMode(); 
 
-  // Debounce search to reduce unnecessary API calls
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchTerm.length > 1) {
         fetchProductSuggestions();
+        setHasSearched(true); // Mark that a search was performed
       } else {
         setProductSuggestions([]);
         setIsDropdownVisible(false);
+        setHasSearched(false); // Reset search status
       }
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm]);
 
-  // Handle clicks outside the search dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -42,62 +46,157 @@ const SearchBar = () => {
     };
   }, []);
 
-  const fetchProductSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .or(`description.ilike.%${searchTerm}%,upc.ilike.%${searchTerm}%`)
-        .limit(3);
-
-      if (data) {
-        setProductSuggestions(data);
-        setIsDropdownVisible(true);
-      }
-    } catch (error) {
-      console.error('Error fetching product suggestions:', error);
-    } finally {
-      setIsLoading(false);
+const getPrioritizedResults = async (terms) => {
+  let mainKeyword = terms[0];
+  
+  if (terms.length > 1) {
+    const potentialBrands = terms.filter(term => term.length >= 4);
+    if (potentialBrands.length > 0) {
+      mainKeyword = potentialBrands[0];
     }
-  };
+  }
+  
+  let query = supabase
+    .from('products')
+    .select('*')
+    .in('status', [1, 2]);
+  
+  if (isWholesaleMode) {
+    query = query.gt('wholesale_price', 0);
+  }
+  
+  let allSearchConditions = [];
+  terms.forEach(term => {
+    const variations = new Set();
+    variations.add(term);
+    
+    const withoutHyphens = term.replace(/-/g, '');
+    variations.add(withoutHyphens);
+    
+    if (term.length > 1 && !term.includes('-')) {
+      for (let i = 1; i < term.length; i++) {
+        variations.add(`${term.substring(0, i)}-${term.substring(i)}`);
+      }
+    }
+    
+    variations.forEach(variant => {
+      const variantLower = variant.toLowerCase();
+      allSearchConditions.push(`description.ilike.%${variantLower}%`);
+      allSearchConditions.push(`upc.ilike.%${variantLower}%`);
+    });
+  });
+  
+  query = query.or(allSearchConditions.join(','));
+  query = query.limit(40); // Get more results for filtering
+  
+  const { data, error } = await query;
+  
+  if (error) throw error;
+  
+  if (!data || data.length === 0) return { data: [] };
+  
+  // Sort products by score
+  const sortedProducts = data.sort((a, b) => {
+    const scoreA = calculateProductScore(a, terms, mainKeyword);
+    const scoreB = calculateProductScore(b, terms, mainKeyword);
+    return scoreB - scoreA; // Descending order
+  });
+  
+  return { data: sortedProducts.slice(0, 5) }; // Return top 5
+};
+
+// Update the fetchProductSuggestions function
+const fetchProductSuggestions = async () => {
+  setIsLoading(true);
+  try {
+    if (searchTerm && searchTerm.trim() !== '') {
+      const terms = searchTerm.trim().split(/\s+/).filter(term => term.length > 0);
+      
+      if (terms.length > 0) {
+        // Get prioritized results using our new function
+        const { data } = await getPrioritizedResults(terms);
+        setProductSuggestions(data || []);
+        setIsDropdownVisible(searchTerm.trim() !== '');
+      } else {
+        setProductSuggestions([]);
+        setIsDropdownVisible(false);
+      }
+    } else {
+      setProductSuggestions([]);
+      setIsDropdownVisible(false);
+    }
+  } catch (error) {
+    console.error('Error fetching product suggestions:', error);
+    setProductSuggestions([]);
+    setIsDropdownVisible(searchTerm.trim() !== '');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleProductSelect = (productId) => {
     navigate(`/products/${productId}`);
     setSearchTerm('');
     setProductSuggestions([]);
     setIsDropdownVisible(false);
+    setHasSearched(false);
   };
 
   const handleViewAllProducts = () => {
-    // Set the search query in context directly
     setSearchQuery(searchTerm);
-    
-    // Clear any selected category to ensure global search
     setSelectedCategory(null);
-    
-    // Close the dropdown
     setIsDropdownVisible(false);
     
-    // If we're already on the home page, use a URL param to force a refresh
     if (location.pathname === '/' || location.pathname === '/products') {
-      // Use search params to force refresh
       navigate(`/?search=${encodeURIComponent(searchTerm)}`);
     } else {
-      // Otherwise navigate to home with search params
       navigate(`/?search=${encodeURIComponent(searchTerm)}`);
     }
-    
-    // Clear the search input
     setSearchTerm('');
+    setHasSearched(false);
   };
 
-  // Handle key press for the Enter key
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && searchTerm.trim() !== '') {
       e.preventDefault();
       handleViewAllProducts();
     }
+  };
+
+  const highlightMatches = (text, searchTerm) => {
+    if (!searchTerm.trim()) return text;
+    
+    const terms = searchTerm.trim().split(/\s+/).filter(term => term.length > 0);
+    let highlightedText = text;
+    
+    const escapeRegExp = (string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+    
+    const termsToHighlight = new Set();
+    
+    terms.forEach(term => {
+      termsToHighlight.add(term);
+      
+      const withoutHyphens = term.replace(/-/g, '');
+      termsToHighlight.add(withoutHyphens);
+      
+      if (term.length > 1 && !term.includes('-')) {
+        for (let i = 1; i < term.length; i++) {
+          termsToHighlight.add(`${term.substring(0, i)}-${term.substring(i)}`);
+        }
+      }
+    });
+    
+    termsToHighlight.forEach(term => {
+      if (term.length > 0) {
+        const safeRegex = escapeRegExp(term);
+        const regex = new RegExp(`(${safeRegex})`, 'gi');
+        highlightedText = highlightedText.replace(regex, '<span class="bg-yellow-200">$1</span>');
+      }
+    });
+    
+    return <span dangerouslySetInnerHTML={{ __html: highlightedText }} />;
   };
 
   return (
@@ -111,7 +210,8 @@ const SearchBar = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={handleKeyPress}
           onFocus={() => {
-            if (productSuggestions.length > 0) {
+            // Show dropdown on focus if we have suggestions or if we've searched with no results
+            if (productSuggestions.length > 0 || (hasSearched && searchTerm.trim() !== '')) {
               setIsDropdownVisible(true);
             }
           }}
@@ -138,7 +238,7 @@ const SearchBar = () => {
       {/* Product Suggestions or No Results */}
       {isDropdownVisible && (
         <div className="absolute z-10 w-full bg-white border rounded-xs shadow-lg mt-1 max-h-96 overflow-y-auto">
-          {productSuggestions.length > 0 && searchTerm ? (
+          {productSuggestions.length > 0 ? (
             <>
               {productSuggestions.map((product) => (
                 <div 
@@ -153,7 +253,7 @@ const SearchBar = () => {
                   />
                   <div>
                     <p className="text-black font-semibold truncate w-full max-w-[300px]">
-                      {product.description}
+                      {highlightMatches(product.description, searchTerm)}
                     </p>
                     <p className="text-green-600 font-bold">${product.price.toFixed(2)}</p>
                   </div>

@@ -14,6 +14,7 @@ const CategoryItem = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDragOverAsChild, setIsDragOverAsChild] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   const itemRef = useRef(null);
   const canAddSubcategory = level < 2;
@@ -30,9 +31,17 @@ const CategoryItem = ({
     setShowDeleteAlert(true);
   };
   
+
   const confirmDelete = async () => {
-    await onDelete(category.id);
-    setShowDeleteAlert(false);
+    try {
+      setLoading(true);
+      await onDelete(category.id);
+      setShowDeleteAlert(false);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+    }finally {
+      setLoading(false);
+    }
   };
   
   const cancelDelete = () => {
@@ -301,15 +310,15 @@ const CategoryItem = ({
             <div className="flex justify-end space-x-3 mt-6">
               <button
                 onClick={cancelDelete}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 focus:outline-none transition-colors"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 focus:outline-none transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none transition-colors cursor-pointer"
               >
-                Delete
+                {loading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

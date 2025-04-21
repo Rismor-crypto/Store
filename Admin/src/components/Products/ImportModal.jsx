@@ -122,7 +122,7 @@ const ImportModal = ({ isOpen, onClose, onImport }) => {
         
         <div className="mb-4">
           <p className="text-sm text-gray-600 mb-2">
-            Upload a CSV file with the following columns: upc, description, status, price, case_pack, image_url, category
+            Upload a CSV file with the following columns: upc, description, price, case_pack, image_url, category, status
           </p>
           
           {importStats && !importing && (

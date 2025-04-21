@@ -18,12 +18,13 @@ const AddEditProductPage = () => {
   const [formData, setFormData] = useState({
     upc: "",
     description: "",
-    status: true,
+    status: 1,
     price: 0,
     case_pack: 0,
     image_url: "",
     category: "",
     discount: 0,
+    wholesale_price: 0,
   });
   const [error, setError] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -66,12 +67,13 @@ useEffect(() => {
       setFormData({
         upc: data.upc || "",
         description: data.description || "",
-        status: data.status || true,
+        status: data.status || 1,
         price: data.price || 0,
         case_pack: data.case_pack || 0,
         image_url: data.image_url || "",
         category: data.category || "",
         discount: data.discount || 0,
+        wholesale_price: data.wholesale_price || 0,
       });
       
       // Set image preview if image_url exists
@@ -385,9 +387,25 @@ useEffect(() => {
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="true">Active</option>
-              <option value="false">Inactive</option>  
+              <option value="1">Active</option>
+              <option value="0">Inactive</option>  
+              <option value="2">Low Quantity</option>
             </select>
+          </div>
+
+          <div className="col-span-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Wholesale Price ($)
+            </label>
+            <input
+              type="number"
+              name="wholesale_price"
+              value={formData.wholesale_price}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              min="0"
+              step="0.01"
+            />
           </div>
           
           <div className="col-span-2">

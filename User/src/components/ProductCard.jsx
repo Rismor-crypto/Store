@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Check } from 'lucide-react';
 import { useCartContext } from '../context/CartContext';
+import { useShoppingMode } from '../context/ShoppingModeContext';
 import { useNavigate } from 'react-router-dom';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
 
 const ProductCard = ({ product, viewMode = 'grid' }) => {
   const { addToCart } = useCartContext();
+  const { isWholesaleMode } = useShoppingMode();
   const navigate = useNavigate();
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(product);
+    addToCart({
+      ...product,
+      isWholesale: isWholesaleMode && product.wholesale_price > 0
+    });
     setIsAddedToCart(true);
     setTimeout(() => {
       setIsAddedToCart(false);
@@ -25,8 +30,14 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     ? Math.round((product.discount * product.price) / 100) 
     : 0;
 
+  // Determine which price to show based on mode
+  const displayPrice = isWholesaleMode && product.wholesale_price > 0 
+    ? product.wholesale_price 
+    : product.price;
+
   const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjwvc3ZnPg==';
 
+  // List view
   if (viewMode === 'list') {
     return (
       <div className="flex items-center border border-gray-200 p-2 md:p-4 cursor-pointer"
@@ -34,7 +45,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
       title={product.description}
       >
         <div className="w-24 h-24 mr-6 relative">
-        <LazyLoadImage
+          <LazyLoadImage
             src={product.image_url}
             alt={product.description}
             effect="blur"
@@ -43,8 +54,8 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
             wrapperClassName="w-full h-full"
           />
           {product.discount > 0 && (
-            <div className="absolute top-0 left-0 bg-green-500 text-white text-xs px-2 py-1">
-              Save {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"} %
+            <div className="absolute top-0 left-0 bg-blue-700 text-white text-xs px-2 py-1">
+              Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(2) : "0"} %
             </div>
           )}
         </div>
@@ -55,19 +66,26 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               <h3 className="font-semibold text-gray-800 mb-2">
                 {product.description}
               </h3>
-              <div className="flex items-center">
+              <div className="flex items-center flex-wrap">
                 {product.discount ? (
                   <>
                     <span className="text-red-600 font-bold text-xl mr-2">
-                    ${product.discount.toFixed(2)}
+                      ${product.discount.toFixed(2)}
                     </span>
-                    <span className="text-gray-400 line-through text-sm">
-                      ${product.price.toFixed(2)}
+                    <span className="text-gray-400 line-through text-sm mr-2">
+                      ${displayPrice.toFixed(2)}
                     </span>
                   </>
                 ) : (
-                  <span className="text-red-600 font-bold text-xl">
-                    ${product.price.toFixed(2)}
+                  <span className="text-red-600 font-bold text-xl mr-2">
+                    ${displayPrice.toFixed(2)}
+                  </span>
+                )}
+                
+                {/* Show wholesale price for reference when in retail mode */}
+                {!isWholesaleMode && product.wholesale_price > 0 && (
+                  <span className="text-gray-500 text-xs">
+                    Wholesale: ${product.wholesale_price.toFixed(2)}
                   </span>
                 )}
               </div>
@@ -108,17 +126,17 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
 
   // Grid view (default)
   return (
-    <div className=" relative border border-gray-200 p-2 md:p-4 cursor-pointer rounded-xs"
-    onClick={() => navigate(`/products/${product.id}`)}
-    title={product.description}
+    <div className="relative border border-gray-200 p-2 md:p-4 cursor-pointer rounded-xs"
+      onClick={() => navigate(`/products/${product.id}`)}
+      title={product.description}
     >
-              {product.discount > 0 && (
-          <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
-            Save {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"}%
-          </div>
-        )}
+      {product.discount > 0 && (
+        <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
+          Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(2) : "0"}%
+        </div>
+      )}
       <div className="relative mb-4">
-      <LazyLoadImage
+        <LazyLoadImage
           src={product.image_url}
           alt={product.description}
           effect="blur"
@@ -133,20 +151,34 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
           {product.description}
         </h3>
         <div className="flex justify-between items-center mt-2">
-          {product.discount ? (
-            <div className="flex items-baseline gap-2">
+          <div>
+            {product.discount ? (
+              <div className="flex items-baseline gap-2">
+                <span className="text-red-600 font-bold">
+                  ${product.discount.toFixed(2)}
+                </span>
+                <span className="text-gray-600 line-through text-xs">
+                  ${displayPrice.toFixed(2)}
+                </span>
+              </div>
+            ) : (
               <span className="text-red-600 font-bold">
-              ${product.discount.toFixed(2)}
+                ${displayPrice.toFixed(2)}
               </span>
-              <span className="text-gray-600 line-through text-xs">
-                ${product.price}
-              </span>
-            </div>
-          ) : (
-            <span className="text-red-600 font-bold">
-              ${product.price.toFixed(2)}
-            </span>
-          )}
+            )}
+            
+            {/* Show wholesale price for reference when in retail mode */}
+            {!isWholesaleMode && product.wholesale_price > 0 && (
+              <div className="text-gray-500 text-xs mt-1">
+                Wholesale: ${product.wholesale_price.toFixed(2)}
+              </div>
+            )}
+            {isWholesaleMode &&  (
+              <div className="text-gray-500 text-xs mt-1">
+                Retail: ${product.price.toFixed(2)}
+              </div>
+            )}
+          </div>
           <button 
             type="button"
             title="Add to Cart"

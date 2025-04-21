@@ -21,7 +21,8 @@ export class OrderService {
             subtotal: orderData.subtotal,
             discount_amount: orderData.discountAmount,
             total_amount: orderData.totalAmount,
-            status: 'pending'
+            status: 'pending',
+            type: orderData.type,
           }
         ])
         .select()

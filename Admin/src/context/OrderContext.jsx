@@ -25,7 +25,8 @@ export const OrderProvider = ({ children }) => {
   const [filters, setFilters] = useState({
     status: 'all',
     dateRange: null,
-    searchTerm: ''
+    searchTerm: '',
+    type: 'all'
   });
 
   // Fetch orders with pagination and filters
@@ -53,6 +54,10 @@ export const OrderProvider = ({ children }) => {
         query = query
           .gte('created_at', filters.dateRange.from)
           .lte('created_at', filters.dateRange.to);
+      }
+
+      if (filters.type && filters.type !== 'all') {
+        query = query.eq('type', filters.type);
       }
       
       // Add pagination

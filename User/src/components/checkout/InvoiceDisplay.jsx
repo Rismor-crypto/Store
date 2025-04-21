@@ -1,4 +1,5 @@
 import React from "react";
+import { useShoppingMode } from "../../context/ShoppingModeContext";
 
 const InvoiceDisplay = ({ 
   invoiceRef, 
@@ -11,6 +12,8 @@ const InvoiceDisplay = ({
   onDownloadPDF,
   isProcessing
 }) => {
+
+  const { isWholesaleMode } = useShoppingMode();
   // Function to calculate savings amount for an item
   const getSavingsAmount = (item) => {
     if (item.discount && item.discount > 0) {
@@ -44,6 +47,7 @@ const InvoiceDisplay = ({
                 <span className="text-[#fb2c36]">Russel</span>
                 <span className="text-[#fc2c36]">co</span>
               </div>
+              <p className="text-sm">{isWholesaleMode ? 'Wholesale Order' : 'Retail Order'}</p>
             </div>
             <div className="text-center md:text-right">
               <h2 className="text-xl md:text-2xl font-bold">INVOICE</h2>

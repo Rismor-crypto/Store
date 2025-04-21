@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trash2, Plus, Minus } from 'lucide-react';
 import { useCartContext } from '../context/CartContext';
+import { useShoppingMode } from '../context/ShoppingModeContext';
 import { Link } from 'react-router-dom';
 
 const CartPage = () => {
@@ -8,8 +9,12 @@ const CartPage = () => {
     cartItems,
     removeFromCart,
     updateQuantity,
-    getTotalPrice
+    getTotalPrice,
+    getMinimumOrderAmount
   } = useCartContext();
+  
+  const { isWholesaleMode } = useShoppingMode();
+  const minimumOrderAmount = getMinimumOrderAmount();
 
   const { totalWithoutDiscount, totalWithDiscount } = getTotalPrice();
 
@@ -40,17 +45,12 @@ const CartPage = () => {
     }
   };
 
-  // Updated case handling function to reset eaches when going from 0 to 1 case
   const handleIncreaseCases = (productId) => {
     const currentItem = cartItems.find(item => item.id === productId);
     const currentCases = Math.floor(currentItem.quantity / currentItem.case_pack);
-    
-    // If we're going from 0 cases to 1 case, reset eaches to 0
     if (currentCases === 0) {
-      // Set quantity to exactly one case with no eaches
       updateQuantity(productId, currentItem.case_pack);
     } else {
-      // Normal case: just add one more case to the current quantity
       updateQuantity(productId, currentItem.quantity + currentItem.case_pack);
     }
   };
@@ -71,8 +71,6 @@ const CartPage = () => {
       const currentItem = cartItems.find(item => item.id === productId);
       const caseQuantity = value === '' ? 0 : parseInt(value, 10);
       const eachesQuantity = currentItem.quantity % currentItem.case_pack;
-      
-      // If going from 0 to a positive number of cases, reset eaches
       const currentCases = Math.floor(currentItem.quantity / currentItem.case_pack);
       if (currentCases === 0 && caseQuantity > 0) {
         updateQuantity(productId, caseQuantity * currentItem.case_pack);
@@ -92,38 +90,43 @@ const CartPage = () => {
     }
   };
 
-  // Updated to handle discount as final price
-  const getDiscountedPrice = (product) => {
-    if (product.discount && product.discount > 0) {
-      return product.discount.toFixed(2);
+  const getItemPrice = (item) => {
+    if (item.discount && item.discount > 0) {
+      return item.discount.toFixed(2);
     }
-    return product.price.toFixed(2);
+    if (isWholesaleMode && item.wholesale_price > 0) {
+      return item.wholesale_price.toFixed(2);
+    }
+    return item.price.toFixed(2);
   };
 
-  // Calculate savings percentage
-  const getSavingsPercentage = (product) => {
-    if (product.discount && product.discount > 0) {
-      return ((product.price - product.discount) / product.price * 100).toFixed(1);
+  const getSavingsPercentage = (item) => {
+    const basePrice = isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price : item.price;
+    
+    if (item.discount && item.discount > 0) {
+      return ((basePrice - item.discount) / basePrice * 100).toFixed(1);
     }
     return "0";
   };
 
-  const getProductTotal = (product) => {
-    const finalPrice = product.discount && product.discount > 0 ? product.discount : product.price;
-    return (finalPrice * product.quantity).toFixed(2);
+  const getProductTotal = (item) => {
+    let finalPrice;
+    if (item.discount && item.discount > 0) {
+      finalPrice = item.discount;
+    } else {
+      finalPrice = isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price : item.price;
+    }
+    return (finalPrice * item.quantity).toFixed(2);
   };
 
-  // Calculate case count for an item
   const getCaseCount = (item) => {
     return Math.floor(item.quantity / item.case_pack);
   };
 
-  // Calculate eaches count (remainder after cases)
   const getEachesCount = (item) => {
     return item.quantity % item.case_pack;
   };
 
-  // Format quantity as "X case(s) + Y each(es)"
   const getFormattedQuantity = (item) => {
     const cases = getCaseCount(item);
     const eaches = getEachesCount(item);
@@ -141,9 +144,9 @@ const CartPage = () => {
     return (
       <>
         <div className="container mx-auto px-4 py-10 text-center">
-          <h2 className="text-2xl font-bold mb-4">Your Cart is Empty</h2>
+          <h2 className="text-2xl font-bold mb-4">Your {isWholesaleMode ? 'Wholesale' : 'Retail'} Cart is Empty</h2>
           <p className="text-gray-600 mb-6">
-            Looks like you haven't added any items to your cart yet.
+            Looks like you haven't added any items to your {isWholesaleMode ? 'wholesale' : 'retail'} cart yet.
           </p>
           <Link
             to="/"
@@ -159,7 +162,9 @@ const CartPage = () => {
   return (
     <main className="bg-white">
       <div className="container mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold mb-8 text-center sm:text-left">Your Cart</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center sm:text-left">
+          Your {isWholesaleMode ? 'Wholesale' : 'Retail'} Cart
+        </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 place-items-start">
           {/* Cart Items */}
@@ -200,14 +205,18 @@ const CartPage = () => {
                     <div className="text-gray-600 text-sm mt-1">
                       {item.discount && item.discount > 0 ? (
                         <div className="flex flex-wrap items-center gap-1">
-                          <span className="line-through">${item.price.toFixed(2)}</span>
+                          <span className="line-through">
+                            ${isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price.toFixed(2) : item.price.toFixed(2)}
+                          </span>
                           <span className="text-blue-600">${item.discount.toFixed(2)}</span>
                           <span className="bg-blue-600 text-white px-2 py-0.5 rounded-xs text-xs">
                             Save {getSavingsPercentage(item)}%
                           </span>
                         </div>
                       ) : (
-                        <span>${item.price.toFixed(2)}</span>
+                        <span>
+                          ${isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price.toFixed(2) : item.price.toFixed(2)}
+                        </span>
                       )}
                     </div>
                     <div className='text-gray-600 text-sm'>Case Pack: {item.case_pack}</div>
@@ -298,7 +307,9 @@ const CartPage = () => {
 
           {/* Order Summary */}
           <div className="rounded-xs border border-gray-200 p-6 w-full">
-            <h2 className="text-xl font-bold mb-4">Order Summary</h2>
+            <h2 className="text-xl font-bold mb-4">
+              {isWholesaleMode ? 'Wholesale' : 'Retail'} Order Summary
+            </h2>
 
             <div className="space-y-4">
               {cartItems.map(item => (
@@ -313,11 +324,15 @@ const CartPage = () => {
                     {/* Show original and discounted prices if applicable */}
                     {item.discount && item.discount > 0 ? (
                       <>
-                        <span className="line-through mr-2 text-gray-400">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="line-through mr-2 text-gray-400">
+                          ${((isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price : item.price) * item.quantity).toFixed(2)}
+                        </span>
                         <span>${(item.discount * item.quantity).toFixed(2)}</span>
                       </>
                     ) : (
-                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                      <span>
+                        ${((isWholesaleMode && item.wholesale_price > 0 ? item.wholesale_price : item.price) * item.quantity).toFixed(2)}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -335,17 +350,21 @@ const CartPage = () => {
               </div>
             </div>
 
-            {/* If the subtotal is less than 1500 dollars the user is not allowed to proceed because company only deals with large orders */}
-            {totalWithDiscount <= 1500 && (
+            {/* Show minimum order amount warning based on the current mode */}
+            {totalWithDiscount < minimumOrderAmount && (
               <div className="text-red-500 text-sm mt-2">
-                <p>Note: Minimum order amount is $1500.</p>
+                <p>Note: Minimum {isWholesaleMode ? 'wholesale' : 'retail'} order amount is ${minimumOrderAmount.toLocaleString()}.</p>
                 <p>Please add more items to your cart.</p>
               </div>
             )}
 
             <Link
-              to={totalWithDiscount > 1500 ? "/checkout" : "#"}
-              className={`w-full py-3 rounded-xs mt-6 block text-center transition ${totalWithDiscount > 1500 ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+              to={totalWithDiscount >= minimumOrderAmount ? "/checkout" : "#"}
+              className={`w-full py-3 rounded-xs mt-6 block text-center transition ${
+                totalWithDiscount >= minimumOrderAmount 
+                  ? 'bg-red-500 text-white hover:bg-red-600' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
               Proceed to Checkout
             </Link>

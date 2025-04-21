@@ -3,37 +3,41 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useProductContext } from '../context/ProductContext';
 
 const Pagination = ({ currentCategory }) => {
-  const { pagination, fetchProducts, selectedCategory, sortOption } = useProductContext();
+  const { 
+    pagination, 
+    fetchProducts, 
+    selectedCategory, 
+    sortOption,
+    searchQuery
+  } = useProductContext();
   const { page, pageSize, totalProducts } = pagination;
   
   const totalPages = Math.ceil(totalProducts / pageSize);
   
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
-      // Use the currentCategory prop if provided, otherwise fall back to selectedCategory from context
       const categoryToUse = currentCategory !== undefined ? currentCategory : selectedCategory;
       
-      // Call fetchProducts with all necessary parameters to maintain state
       fetchProducts(
-        newPage,         // page number
-        pageSize,        // page size
-        categoryToUse,   // category ID
-        sortOption,      // sorting option
-        null,            // filter (null for normal filtering)
-        undefined        // search (undefined to use current search state)
+        newPage,        
+        pageSize,        
+        categoryToUse,   
+        sortOption,      
+        null,            
+        searchQuery      
       );
+      
+      window.scrollTo(0, 0);
     }
   };
   
-  // Generate page number buttons with ellipsis
   const renderPageNumbers = () => {
     const pageNumbers = [];
     
-    // Always show first page
     pageNumbers.push(
       <button
-      type="button"
-      title="Go to page 1"
+        type="button"
+        title="Go to page 1"
         key={1}
         onClick={() => handlePageChange(1)}
         className={`
@@ -48,7 +52,6 @@ const Pagination = ({ currentCategory }) => {
       </button>
     );
     
-    // Add first ellipsis if needed
     if (page > 4) {
       pageNumbers.push(
         <span key="ellipsis1" className="mx-1 w-10 h-10 flex items-center justify-center">
@@ -57,9 +60,7 @@ const Pagination = ({ currentCategory }) => {
       );
     }
     
-    // Add pages around current page
     for (let i = Math.max(2, page - 1); i <= Math.min(page + 1, totalPages - 1); i++) {
-      // Skip if we're too close to the start or end
       if (i <= 1 || i >= totalPages) continue;
       
       pageNumbers.push(
@@ -81,7 +82,6 @@ const Pagination = ({ currentCategory }) => {
       );
     }
     
-    // Add last ellipsis if needed
     if (page < totalPages - 3) {
       pageNumbers.push(
         <span key="ellipsis2" className="mx-1 w-10 h-10 flex items-center justify-center">
@@ -90,7 +90,6 @@ const Pagination = ({ currentCategory }) => {
       );
     }
     
-    // Always show last page if there is more than one page
     if (totalPages > 1) {
       pageNumbers.push(
         <button
@@ -114,7 +113,6 @@ const Pagination = ({ currentCategory }) => {
     return pageNumbers;
   };
   
-  // Don't render pagination if there's only 1 page or no pages
   if (totalPages <= 1) return null;
   
   return (

@@ -152,6 +152,10 @@ const OrderDetails = () => {
         <div>
           <h2 className="text-lg font-medium text-gray-800 mb-4">Order Summary</h2>
           <div className="bg-gray-50 p-4 rounded-md">
+          <div className="flex justify-between mb-2">
+              <span className="text-gray-600">Order Type:</span>
+              <span className="font-medium">{order.type.charAt(0).toUpperCase() + order.type.slice(1)}</span>
+            </div>
             <div className="flex justify-between mb-2">
               <span className="text-gray-600">Order Number:</span>
               <span className="font-medium">{order.order_number}</span>

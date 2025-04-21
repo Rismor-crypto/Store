@@ -7,6 +7,7 @@ import InvoiceDisplay from "../components/checkout/InvoiceDisplay";
 import SuccessPage from "../components/checkout/SuccessPage";
 import OrderService from "../services/OrderService";
 import PDFService from "../services/PDFService";
+import { useShoppingMode } from "../context/ShoppingModeContext";
 
 /**
  * Main checkout page component that orchestrates the checkout flow
@@ -16,6 +17,10 @@ const CheckoutPage = () => {
   const invoiceRef = useRef(null);
   const navigate = useNavigate();
   const { totalWithoutDiscount, totalWithDiscount } = getTotalPrice();
+  const { isWholesaleMode } = useShoppingMode(); // Check if wholesale mode is active
+  console.log("Wholesale Mode:", isWholesaleMode); // Debugging line
+  
+  
 
   // Form state
   const [formData, setFormData] = useState({
@@ -114,7 +119,8 @@ const CheckoutPage = () => {
         address: formData.address,
         subtotal: totalWithoutDiscount,
         discountAmount: totalWithoutDiscount - totalWithDiscount,
-        totalAmount: totalWithDiscount
+        totalAmount: totalWithDiscount,
+        type: isWholesaleMode === true ? 'wholesale' : 'retail',
       };
       
       // Save order to database first

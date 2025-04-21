@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2, AlertCircle } from "lucide-react";
 import { useProductContext } from "../../context/ProductContext";
 
 const ProductsTable = ({ products, onDeleteClick }) => {
@@ -76,8 +76,8 @@ const ProductsTable = ({ products, onDeleteClick }) => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="h-10 w-10 rounded-md overflow-hidden bg-gray-100">
                       {product.image_url ? (
-                        <img 
-                          src={product.image_url} 
+                        <img
+                          src={product.image_url}
                           alt={product.description}
                           className="h-full w-full object-cover"
                         />
@@ -102,11 +102,15 @@ const ProductsTable = ({ products, onDeleteClick }) => {
                     {product.category_info?.name || "Uncategorized"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        !product.status ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full items-center ${product.status === 1 ? 'bg-green-100 text-green-800' :
+                        product.status === 2 ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
                       }`}>
-                        {product.status ? 'Active' : 'Inactive'}
-                      </span>
+                      {product.status === 2 && <AlertCircle className="w-3 h-3 mr-1" />}
+                      {product.status === 1 ? 'Active' :
+                        product.status === 2 ? 'Low Quantity' :
+                          'Inactive'}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     ${product.price?.toFixed(2)}
@@ -115,7 +119,7 @@ const ProductsTable = ({ products, onDeleteClick }) => {
                     {product.case_pack || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    
+
                     {product.discount !== 0 ? ((product.price - product.discount) / product.price * 100).toFixed(2) : "0"} %
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

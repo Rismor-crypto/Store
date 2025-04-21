@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import supabase from '../utils/supabase';
+import { useShoppingMode } from './ShoppingModeContext';
+import { calculateProductScore } from '../utils/helper';
 
 const ProductContext = createContext();
 
@@ -22,8 +24,11 @@ export const ProductProvider = ({ children }) => {
   
   // Use ref to track the latest fetch call to prevent race conditions
   const lastFetchId = useRef(0);
+  
+  // Get the current mode from ShoppingModeContext
+  const { isWholesaleMode } = useShoppingMode();
 
-  // Fetch and sort products
+  // Fetch and sort categories
   const fetchCategories = useCallback(async () => {
     setIsCatLoading(true);
     setError(null);
@@ -106,7 +111,12 @@ export const ProductProvider = ({ children }) => {
       let query = supabase
         .from('products')
         .select('*', { count: 'exact' })
-        .eq('status', true);
+        .in('status', [1, 2]); // Updated to use .in() for status filtering
+      
+      // Apply wholesale filter if in wholesale mode
+      if (isWholesaleMode) {
+        query = query.gt('wholesale_price', 0); // Only products with wholesale price > 0
+      }
       
       // Apply category filtering
       if (effectiveCategoryId) {
@@ -115,16 +125,92 @@ export const ProductProvider = ({ children }) => {
           query = query.in('category', descendantCategories);
         }
       }
-
+  
       // Apply discount filtering
       if (filter === 'discount') {
         query = query.gt('discount', 0);
       }
       
-      // Apply search filtering - this is important
-      if (effectiveSearch && effectiveSearch.trim() !== '') {
-        query = query.or(`description.ilike.%${effectiveSearch}%,upc.ilike.%${effectiveSearch}%`);
+    // Apply search with prioritization
+    if (effectiveSearch && effectiveSearch.trim() !== '') {
+      const terms = effectiveSearch.trim().split(/\s+/).filter(term => term.length > 0);
+      
+      if (terms.length > 0) {
+        // Create search conditions
+        let searchConditions = [];
+        
+        terms.forEach(term => {
+          const variations = new Set();
+          variations.add(term);
+          
+          const withoutHyphens = term.replace(/-/g, '');
+          variations.add(withoutHyphens);
+          
+          if (term.length > 1 && !term.includes('-')) {
+            for (let i = 1; i < term.length; i++) {
+              variations.add(`${term.substring(0, i)}-${term.substring(i)}`);
+            }
+          }
+          
+          variations.forEach(variant => {
+            const variantLower = variant.toLowerCase();
+            searchConditions.push(`description.ilike.%${variantLower}%`);
+            searchConditions.push(`upc.ilike.%${variantLower}%`);
+          });
+        });
+        
+        query = query.or(searchConditions.join(','));
+        
+        // We need to get ALL matching products for client-side sorting
+        const { data: allProducts, count, error: searchError } = await query;
+        
+        if (searchError) throw searchError;
+        
+        // Get main keyword for prioritization
+        let mainKeyword = terms[0];
+        if (terms.length > 1) {
+          const potentialBrands = terms.filter(term => term.length >= 4);
+          if (potentialBrands.length > 0) {
+            mainKeyword = potentialBrands[0];
+          }
+        }
+        
+        // Sort by relevance
+        const sortedProducts = allProducts.sort((a, b) => {
+          const scoreA = calculateProductScore(a, terms, mainKeyword);
+          const scoreB = calculateProductScore(b, terms, mainKeyword);
+          return scoreB - scoreA;
+        });
+        
+        // Apply pagination manually
+        const paginatedProducts = sortedProducts.slice(
+          (page - 1) * pageSize, 
+          page * pageSize
+        );
+        
+        // Update state
+        if (fetchId === lastFetchId.current) {
+          setProducts(paginatedProducts);
+          setPagination({
+            page,
+            pageSize,
+            totalProducts: count || 0
+          });
+          setSortOption(effectiveSort);
+          
+          if (categoryId !== null && categoryId !== undefined) {
+            setSelectedCategory(categoryId);
+          }
+          
+          if (search !== null && search !== undefined) {
+            setSearchQuery(search);
+          }
+        }
+        
+        setIsLoading(false);
+        return; // Exit early since we've handled everything
       }
+    }
   
       // Apply sorting
       switch(effectiveSort) {
@@ -138,7 +224,7 @@ export const ProductProvider = ({ children }) => {
           query = query.order('discount', { ascending: false });
           break;
         default:
-          query = query.order('created_at', { ascending: false });
+          // query = query.order('created_at', { ascending: false });
       }
       
       // Apply pagination last
@@ -184,7 +270,7 @@ export const ProductProvider = ({ children }) => {
         setIsLoading(false);
       }
     }
-  }, [categories, selectedCategory, searchQuery, sortOption]);
+  }, [categories, selectedCategory, searchQuery, sortOption, isWholesaleMode]); // Added isWholesaleMode dependency
 
   // Helper to organize categories into a tree
   const organizeCategories = (categories) => {
@@ -215,6 +301,13 @@ export const ProductProvider = ({ children }) => {
   const clearError = () => {
     setError(null);
   };
+
+  // Reload products when mode changes
+  useEffect(() => {
+    if (categories.length > 0) {
+      fetchProducts(pagination.page, pagination.pageSize);
+    }
+  }, [isWholesaleMode, categories.length]);
 
   // Initial fetch effect
   useEffect(() => {
