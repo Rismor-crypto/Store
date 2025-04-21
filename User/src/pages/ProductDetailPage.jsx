@@ -262,7 +262,7 @@ const ProductDetailPage = () => {
             {/* Price and discount section */}
             <div className="flex items-center flex-wrap gap-2 mb-4">
               <span className="text-xl md:text-2xl font-semibold text-red-500">
-                ${product.discount.toFixed(2)}
+                ${product.discount> 0 ? product.discount.toFixed(2) : displayPrice.toFixed(2)}
               </span>
               {product.discount > 0 && (
                 <span className="text-gray-600 line-through text-sm">
@@ -361,11 +361,12 @@ const ProductDetailPage = () => {
                 </div>
               </div>
             </div>
-
+            {product.status === 2 &&
             <div className="flex items-center p-2 mb-4 bg-amber-50 border border-amber-200 rounded-xs text-amber-700 max-w-sm">
               <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
               <span className="font-medium text-sm">Low Quantity Available</span>
             </div>
+            }
             
             {/* Add to cart button */}
                   <button
@@ -429,7 +430,11 @@ const ProductDetailPage = () => {
                 <div
                   className="relative border border-gray-200 p-2 md:p-4 cursor-pointer rounded-xs"
                   key={product.id}
-                >
+                  onClick={() => {
+                    // Navigate to product detail page
+                    window.location.href = `/products/${product.id}`;
+                  }}
+                  >
                   {product.discount > 0 && (
                     <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
                       Save {getSavingsPercentage(product)}%
