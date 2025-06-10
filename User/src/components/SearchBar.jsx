@@ -148,9 +148,9 @@ const fetchProductSuggestions = async () => {
     setIsDropdownVisible(false);
     
     if (location.pathname === '/' || location.pathname === '/products') {
-      navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+      navigate(`/products/?search=${encodeURIComponent(searchTerm)}`);
     } else {
-      navigate(`/?search=${encodeURIComponent(searchTerm)}`);
+      navigate(`/products/?search=${encodeURIComponent(searchTerm)}`);
     }
     setSearchTerm('');
     setHasSearched(false);
