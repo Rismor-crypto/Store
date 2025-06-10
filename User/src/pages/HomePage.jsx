@@ -136,9 +136,9 @@ const HomePage = () => {
           
           <div className="w-full md:w-3/4 product-grid-container">
             {isOffersPage && (
-              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="font-medium text-red-600">Special Offers</span>
+              <div className="mb-6 p-3 bg-red-50 border border-red-200 sm:bg-red-100 rounded flex items-center justify-between">
+                <div className="flex items-center justify-center w-full">
+                  <span className="font-medium text-red-600 sm:font-bold sm:text-2xl md:text-3xl">Special Offers</span>
                 </div>
               </div>
             )}

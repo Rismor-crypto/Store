@@ -176,8 +176,8 @@ const CartPage = () => {
   }
 
   return (
-    <main className="bg-white">
-      <div className="container mx-auto px-4 py-10 pb-24 md:pb-10">
+    <main className="bg-white relative">
+      <div className="container mx-auto px-4 py-10 pb-10">
         <h1 className="text-3xl font-bold mb-8 text-center sm:text-left">
           Your {isWholesaleMode ? "Wholesale" : "Retail"} Cart
         </h1>
@@ -442,10 +442,10 @@ const CartPage = () => {
       </div>
 
       {/* Fixed Mobile Checkout Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
+      <div className="md:hidden sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
         <div className="flex items-center justify-between mb-3">
           <div className="text-sm text-gray-600">
-            {isWholesaleMode ? "Wholesale" : "Retail"} Total
+            Total
           </div>
           <div className="font-bold text-lg">
             ${totalWithDiscount.toFixed(2)}
@@ -454,7 +454,7 @@ const CartPage = () => {
 
         {totalWithDiscount < minimumOrderAmount && (
           <div className="text-red-500 text-xs mb-2">
-            Minimum {isWholesaleMode ? "wholesale" : "retail"} order: $
+            Minimum order: $
             {minimumOrderAmount.toLocaleString()}
           </div>
         )}

@@ -74,8 +74,19 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Update quantity in the current mode's cart - move updated item to top
+  // Update quantity in the current mode's cart - NO REORDERING (for cart page updates)
   const updateQuantity = (productId, quantity) => {
+    getCurrentCartSetter()(prevItems => {
+      return prevItems.map(item => 
+        item.id === productId 
+          ? { ...item, quantity: Math.max(1, quantity) }
+          : item
+      );
+    });
+  };
+
+  // Update quantity with stack behavior (for external updates like product pages)
+  const updateQuantityWithReorder = (productId, quantity) => {
     getCurrentCartSetter()(prevItems => {
       const itemIndex = prevItems.findIndex(item => item.id === productId);
       
@@ -160,7 +171,8 @@ export const CartProvider = ({ children }) => {
       wholesaleCartItems,
       addToCart,
       removeFromCart,
-      updateQuantity,
+      updateQuantity, // No reordering - for cart page
+      updateQuantityWithReorder, // With reordering - for external updates
       getTotalItems,
       getTotalPrice,
       getDiscountedPrice,
