@@ -27,7 +27,7 @@ const Navbar = () => {
         >
           <div className="text-2xl font-bold">
             <span className="text-red-500">Russel</span>
-            <span className="text-red-500">co</span>
+            <span className="text-red-500">co Inc</span>
           </div>
         </div>
 
@@ -39,9 +39,9 @@ const Navbar = () => {
         
         {/* Toogle & Cart */}
         <div className='flex items-center'>
-        <div>
+        {/* <div>
           <ModeToggle />
-        </div>
+        </div> */}
         <Link
           to="/cart"
           className="relative cursor-pointer hover:text-red-500 transition-colors ml-4"
@@ -66,7 +66,7 @@ const Navbar = () => {
           >
             <div className="text-xl font-bold">
               <span className="text-red-500">Russel</span>
-              <span className="text-red-500">co</span>
+              <span className="text-red-500">co Inc</span>
             </div>
           </div>
           
@@ -82,9 +82,9 @@ const Navbar = () => {
         </div>
         
         {/* Mode Toggle Switch - Mobile (Centered) */}
-        <div className="flex justify-center my-4">
+        {/* <div className="flex justify-center my-4">
           <ModeToggle />
-        </div>
+        </div> */}
         
         {/* Search Bar */}
         <div className="mt-2">

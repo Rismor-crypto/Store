@@ -9,7 +9,7 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const baseUrl = 'https://russelco.vercel.app';
+const baseUrl = 'https://russelcoinc.com';
 
 async function generateSitemap() {
 
@@ -29,22 +29,22 @@ async function generateSitemap() {
 
   const staticXml = `
     <url>
-      <loc>https://russelco.vercel.app/</loc>
+      <loc>https://russelcoinc.com/</loc>
       <priority>1.0</priority>
     </url>
     <url>
-      <loc>https://russelco.vercel.app/products</loc>
+      <loc>https://russelcoinc.com/products</loc>
       <priority>0.9</priority>
     </url>
     <url>
-      <loc>https://russelco.vercel.app/offers</loc>
+      <loc>https://russelcoinc.com/offers</loc>
       <priority>0.8</priority>
     </url>
   `;
 
   const productXml = products.map((product) => `
     <url>
-      <loc>${baseUrl}/product/${product.id}</loc>
+      <loc>${baseUrl}/items/${product.id}</loc>
       <priority>0.9</priority>
     </url>
   `).join('');

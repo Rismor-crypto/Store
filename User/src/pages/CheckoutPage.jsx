@@ -17,11 +17,8 @@ const CheckoutPage = () => {
   const invoiceRef = useRef(null);
   const navigate = useNavigate();
   const { totalWithoutDiscount, totalWithDiscount } = getTotalPrice();
-  const { isWholesaleMode } = useShoppingMode(); // Check if wholesale mode is active
-  console.log("Wholesale Mode:", isWholesaleMode); // Debugging line
+  const { isWholesaleMode } = useShoppingMode();
   
-  
-
   // Form state
   const [formData, setFormData] = useState({
     firstName: "",
@@ -94,23 +91,16 @@ const CheckoutPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Process order and show invoice
+  // Process order - this is now the main action
   const handlePlaceOrder = async () => {
-    if (validateForm()) {
-      setShowInvoice(true);
-    }
-  };
-
-  // Complete order (save to database and generate PDF)
-  const handleDownloadPDF = async () => {
-    if (!invoiceRef.current) {
+    if (!validateForm()) {
       return;
     }
     
     setIsProcessing(true);
     
     try {
-      // First save the order to database
+      // Save the order to database
       const orderData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -123,24 +113,41 @@ const CheckoutPage = () => {
         type: isWholesaleMode === true ? 'wholesale' : 'retail',
       };
       
-      // Save order to database first
+      // Save order to database
       const savedOrder = await OrderService.createOrder(orderData, cartItems);
       setOrderId(savedOrder.order_number);
       
-      // Then generate PDF
-      await PDFService.generatePDF(invoiceRef.current, 'order_receipt.pdf');
+      // Show invoice first (this will trigger PDF generation)
+      setShowInvoice(true);
       
-      // Clear cart and show success page
-      clearCart();
-      setPageState("success");
-      setShowInvoice(false);
+      // Wait a moment for the invoice to render
+      setTimeout(async () => {
+        try {
+          // Generate PDF
+          if (invoiceRef.current) {
+            await PDFService.generatePDF(invoiceRef.current, 'order_receipt.pdf');
+          }
+        } catch (pdfError) {
+          console.error("Error generating PDF:", pdfError);
+          // Continue with the flow even if PDF generation fails
+        }
+      }, 500);
       
     } catch (error) {
       console.error("Error processing order:", error);
       alert(`There was an error processing your order: ${error.message}`);
+      setShowInvoice(false);
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Handle closing invoice and moving to success page
+  const handleCloseInvoice = () => {
+    // Clear cart and show success page
+    clearCart();
+    setPageState("success");
+    setShowInvoice(false);
   };
 
   // Handle return to home
@@ -151,7 +158,7 @@ const CheckoutPage = () => {
   // Render checkout page
   const renderCheckoutPage = () => (
     <main className="bg-white min-h-screen">
-      <div className="container mx-auto px-4 py-10">
+      <div className="container mx-auto px-4 py-10 pb-24 md:pb-10">
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
 
         <div className="grid md:grid-cols-2 gap-8">
@@ -168,6 +175,8 @@ const CheckoutPage = () => {
             totalWithDiscount={totalWithDiscount} 
             onPlaceOrder={handlePlaceOrder}
             getDiscountedPrice={getDiscountedPrice} 
+            showMobileButton={false}
+            isProcessing={isProcessing}
           />
         </div>
 
@@ -180,11 +189,31 @@ const CheckoutPage = () => {
             totalWithoutDiscount={totalWithoutDiscount}
             totalWithDiscount={totalWithDiscount}
             getDiscountedPrice={getDiscountedPrice}
-            onClose={() => setShowInvoice(false)}
-            onDownloadPDF={handleDownloadPDF}
-            isProcessing={isProcessing}
+            onClose={handleCloseInvoice}
+            isProcessing={false} // No longer processing at this stage
+            showOnlyClose={true} // Only show close button
           />
         )}
+      </div>
+
+      {/* Fixed Mobile Place Order Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-40">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm text-gray-600">
+            Order Total
+          </div>
+          <div className="font-bold text-lg">
+            ${totalWithDiscount.toFixed(2)}
+          </div>
+        </div>
+        
+        <button
+          onClick={handlePlaceOrder}
+          disabled={isProcessing}
+          className="w-full bg-red-500 text-white py-3 rounded-md hover:bg-red-600 transition font-semibold cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          {isProcessing ? "Processing..." : "Place Order"}
+        </button>
       </div>
     </main>
   );

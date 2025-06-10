@@ -1,6 +1,14 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
-const OrderSummary = ({ cartItems, totalWithDiscount, onPlaceOrder, getDiscountedPrice }) => {
+const OrderSummary = ({ 
+  cartItems, 
+  totalWithDiscount, 
+  onPlaceOrder, 
+  getDiscountedPrice, 
+  showMobileButton = true,
+  isProcessing = false
+}) => {
   // Get the final price for an item based on whether it has a discount
   const getFinalPrice = (item) => {
     if (item.discount && item.discount > 0) {
@@ -70,13 +78,34 @@ const OrderSummary = ({ cartItems, totalWithDiscount, onPlaceOrder, getDiscounte
           <span>Total</span>
           <span className="text-lg">${totalWithDiscount.toFixed(2)}</span>
         </div>
+        {/* Special Offers Link */}
+        <div className="text-center mt-2">
+          <Link
+            to="/offers" 
+            className="text-blue-500 hover:text-blue-600 text-sm font-bold"
+          >
+            Don't forget to check out our special offers!
+          </Link>
+        </div>
 
-        {/* Place Order Button */}
+        {/* Place Order Button - Only show on desktop or when explicitly requested */}
+        {showMobileButton && (
+          <button
+            onClick={onPlaceOrder}
+            disabled={isProcessing}
+            className="w-full bg-red-500 text-white py-3 rounded-md mt-4 hover:bg-red-600 transition font-medium cursor-pointer md:block disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? "Processing..." : "Place Order"}
+          </button>
+        )}
+
+        {/* Desktop Place Order Button - Always show on desktop */}
         <button
           onClick={onPlaceOrder}
-          className="w-full bg-red-500 text-white py-3 rounded-md mt-4 hover:bg-red-600 transition font-medium cursor-pointer"
+          disabled={isProcessing}
+          className="hidden md:block w-full bg-red-500 text-white py-3 rounded-md mt-4 hover:bg-red-600 transition font-medium cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Place Order
+          {isProcessing ? "Processing..." : "Place Order"}
         </button>
       </div>
     </div>

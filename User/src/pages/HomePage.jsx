@@ -134,7 +134,7 @@ const HomePage = () => {
             <CategoryContainer />
           </div>
           
-          <div className="w-full md:w-3/4">
+          <div className="w-full md:w-3/4 product-grid-container">
             {isOffersPage && (
               <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded flex items-center justify-between">
                 <div className="flex items-center">

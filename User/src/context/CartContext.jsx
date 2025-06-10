@@ -35,7 +35,7 @@ export const CartProvider = ({ children }) => {
     return isWholesaleMode ? setWholesaleCartItems : setRetailCartItems;
   };
 
-  // Add item to the appropriate cart based on mode
+  // Add item to the appropriate cart based on mode - STACK BEHAVIOR (add to beginning)
   const addToCart = (product, options = {}) => {
     const { quantity = 1 } = options;
     const currentCartSetter = getCurrentCartSetter();
@@ -44,20 +44,25 @@ export const CartProvider = ({ children }) => {
       const existingItemIndex = prevItems.findIndex(item => item.id === product.id);
       
       if (existingItemIndex !== -1) {
+        // If item exists, update quantity and move to top (stack behavior)
         const newItems = [...prevItems];
-        newItems[existingItemIndex] = {
+        const updatedItem = {
           ...newItems[existingItemIndex],
           quantity: (newItems[existingItemIndex].quantity || 1) + quantity
         };
-        return newItems;
+        
+        // Remove from current position and add to the beginning (top of stack)
+        newItems.splice(existingItemIndex, 1);
+        return [updatedItem, ...newItems];
       }
       
+      // New item gets added to the beginning (top of stack)
       return [
-        ...prevItems,
         {
           ...product,
           quantity
-        }
+        },
+        ...prevItems
       ];
     });
   };
@@ -69,15 +74,25 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Update quantity in the current mode's cart
+  // Update quantity in the current mode's cart - move updated item to top
   const updateQuantity = (productId, quantity) => {
-    getCurrentCartSetter()(prevItems =>
-      prevItems.map(item =>
-        item.id === productId
-          ? { ...item, quantity: Math.max(1, quantity) }
-          : item
-      )
-    );
+    getCurrentCartSetter()(prevItems => {
+      const itemIndex = prevItems.findIndex(item => item.id === productId);
+      
+      if (itemIndex !== -1) {
+        const newItems = [...prevItems];
+        const updatedItem = {
+          ...newItems[itemIndex],
+          quantity: Math.max(1, quantity)
+        };
+        
+        // Remove from current position and add to the beginning (top of stack)
+        newItems.splice(itemIndex, 1);
+        return [updatedItem, ...newItems];
+      }
+      
+      return prevItems;
+    });
   };
 
   // Clear the current mode's cart
@@ -87,7 +102,7 @@ export const CartProvider = ({ children }) => {
 
   // Get total items in the current mode's cart
   const getTotalItems = () => {
-    return getCurrentCart().reduce((total, item) => total + (item.quantity || 1), 0);
+    return getCurrentCart().length;
   };
 
   // Get the final price for an item, considering discount as the final price

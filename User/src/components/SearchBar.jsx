@@ -135,7 +135,7 @@ const fetchProductSuggestions = async () => {
 };
 
   const handleProductSelect = (productId) => {
-    navigate(`/products/${productId}`);
+    navigate(`/items/${productId}`);
     setSearchTerm('');
     setProductSuggestions([]);
     setIsDropdownVisible(false);

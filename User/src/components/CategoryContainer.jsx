@@ -20,18 +20,18 @@ const CategoryItem = ({
   const isExpanded = expandedCategories.includes(category.id);
 
   const handleCategoryClick = () => {
-    // Only navigate if this category has no children
-    if (!hasChildren) {
-      navigate(`/products/category/${category.id}`);
-      onCategorySelect(category.id);
-      
-      // Close modal if in mobile view
-      if (isMobile && onCategorySelected) {
-        onCategorySelected();
-      }
-    } else {
-      // If it has children, toggle expansion
-      toggleExpansion();
+    // Always navigate and select this category (whether it has children or not)
+    navigate(`/products/category/${category.id}`);
+    onCategorySelect(category.id);
+    
+    // If this category has children, also expand it
+    if (hasChildren && !isExpanded) {
+      setExpandedCategories([...expandedCategories, category.id]);
+    }
+    
+    // Close modal if in mobile view
+    if (isMobile && onCategorySelected) {
+      onCategorySelected();
     }
   };
 
@@ -135,39 +135,46 @@ const CategoryContainer = ({
     }
   }, [categories, isMobile, internalExpandedCategories.length, externalExpandedCategories]);
 
-  // Auto-expand parent of selected category, if any
+  // Auto-expand parent of selected category only when category selection changes
+  const [lastSelectedCategory, setLastSelectedCategory] = useState(null);
+  
   useEffect(() => {
-    if (selectedCategory) {
-      const findParentCategory = (cats, targetId, parentId = null) => {
-        for (const cat of cats) {
-          if (cat.id === targetId) {
-            return parentId;
-          }
-          
-          if (cat.children && cat.children.length > 0) {
-            // Check direct children first
-            for (const child of cat.children) {
-              if (child.id === targetId) {
-                return cat.id;
-              }
+    // Only run this effect when the selected category actually changes
+    if (selectedCategory !== lastSelectedCategory) {
+      setLastSelectedCategory(selectedCategory);
+      
+      if (selectedCategory) {
+        const findParentCategory = (cats, targetId, parentId = null) => {
+          for (const cat of cats) {
+            if (cat.id === targetId) {
+              return parentId;
             }
             
-            // Then check deeper nested children
-            for (const child of cat.children) {
-              const result = findParentCategory([child], targetId, cat.id);
-              if (result) return result;
+            if (cat.children && cat.children.length > 0) {
+              // Check direct children first
+              for (const child of cat.children) {
+                if (child.id === targetId) {
+                  return cat.id;
+                }
+              }
+              
+              // Then check deeper nested children
+              for (const child of cat.children) {
+                const result = findParentCategory([child], targetId, cat.id);
+                if (result) return result;
+              }
             }
           }
+          return null;
+        };
+        
+        const parentCategoryId = findParentCategory(categories, selectedCategory);
+        if (parentCategoryId && !expandedCategories.includes(parentCategoryId)) {
+          setExpandedCategories(prev => [...prev, parentCategoryId]);
         }
-        return null;
-      };
-      
-      const parentCategoryId = findParentCategory(categories, selectedCategory);
-      if (parentCategoryId && !expandedCategories.includes(parentCategoryId)) {
-        setExpandedCategories(prev => [...prev, parentCategoryId]);
       }
     }
-  }, [selectedCategory, categories, expandedCategories, setExpandedCategories]);
+  }, [selectedCategory, categories, lastSelectedCategory]);
 
   // Function to reset when "All Products" is clicked
   const handleAllProductsClick = () => {

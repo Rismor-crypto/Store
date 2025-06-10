@@ -10,7 +10,8 @@ const InvoiceDisplay = ({
   getDiscountedPrice,
   onClose,
   onDownloadPDF,
-  isProcessing
+  isProcessing = false,
+  showOnlyClose = false
 }) => {
 
   const { isWholesaleMode } = useShoppingMode();
@@ -47,7 +48,7 @@ const InvoiceDisplay = ({
                 <span className="text-[#fb2c36]">Russel</span>
                 <span className="text-[#fc2c36]">co</span>
               </div>
-              <p className="text-sm">{isWholesaleMode ? 'Wholesale Order' : 'Retail Order'}</p>
+              {/* <p className="text-sm">{isWholesaleMode ? 'Wholesale Order' : 'Retail Order'}</p> */}
             </div>
             <div className="text-center md:text-right">
               <h2 className="text-xl md:text-2xl font-bold">INVOICE</h2>
@@ -159,23 +160,37 @@ const InvoiceDisplay = ({
 
           <div className="mt-8 text-sm text-[#4a5565] text-center">
             <p>Thank you for your business!</p>
+            <p className="mt-2 text-[#00a63c] font-medium">Order has been processed successfully!</p>
           </div>
         </div>
-        <div className="flex flex-col md:flex-row justify-center mt-4 space-y-2 md:space-y-0 md:space-x-4">
-          <button
-            onClick={onClose}
-            className="bg-red-500 text-white px-4 py-2 rounded w-full md:w-auto cursor-pointer"
-            disabled={isProcessing}
-          >
-            Close
-          </button>
-          <button
-            onClick={onDownloadPDF}
-            className="bg-green-500 text-white px-4 py-2 rounded w-full md:w-auto cursor-pointer"
-            disabled={isProcessing}
-          >
-            {isProcessing ? "Processing..." : "Confirm Order & Download PDF"}
-          </button>
+        
+        <div className="flex justify-center mt-4">
+          {showOnlyClose ? (
+            <button
+              onClick={onClose}
+              className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition cursor-pointer"
+              disabled={isProcessing}
+            >
+              Continue
+            </button>
+          ) : (
+            <div className="flex flex-col md:flex-row justify-center space-y-2 md:space-y-0 md:space-x-4">
+              <button
+                onClick={onClose}
+                className="bg-red-500 text-white px-4 py-2 rounded w-full md:w-auto cursor-pointer"
+                disabled={isProcessing}
+              >
+                Close
+              </button>
+              <button
+                onClick={onDownloadPDF}
+                className="bg-green-500 text-white px-4 py-2 rounded w-full md:w-auto cursor-pointer"
+                disabled={isProcessing}
+              >
+                {isProcessing ? "Processing..." : "Confirm Order & Download PDF"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

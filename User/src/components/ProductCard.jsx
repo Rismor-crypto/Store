@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingCart, Check } from 'lucide-react';
+import { ShoppingCart, Check, Minus, Plus } from 'lucide-react';
 import { useCartContext } from '../context/CartContext';
 import { useShoppingMode } from '../context/ShoppingModeContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   const { isWholesaleMode } = useShoppingMode();
   const navigate = useNavigate();
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -18,17 +19,108 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     addToCart({
       ...product,
       isWholesale: isWholesaleMode && product.wholesale_price > 0
-    });
+    }, { quantity });
     setIsAddedToCart(true);
     setTimeout(() => {
       setIsAddedToCart(false);
     }, 2000);
   };
 
-  // Calculate discount percentage
-  const discountPercentage = product.discount 
-    ? Math.round((product.discount * product.price) / 100) 
-    : 0;
+  // Calculate case count for the current quantity
+  const getCaseCount = () => {
+    if (!product) return 0;
+    return Math.floor(quantity / product.case_pack);
+  };
+
+  // Calculate eaches count (remainder after cases)
+  const getEachesCount = () => {
+    if (!product) return quantity;
+    return quantity % product.case_pack;
+  };
+
+  // Format quantity as "X case(s) + Y each(es)"
+  const getFormattedQuantity = () => {
+    if (!product) return `${quantity} each${quantity !== 1 ? 'es' : ''}`;
+
+    const cases = getCaseCount();
+    const eaches = getEachesCount();
+
+    if (cases > 0 && eaches > 0) {
+      return `${cases}c + ${eaches}e`;
+    } else if (cases > 0) {
+      return `${cases} case${cases !== 1 ? 's' : ''}`;
+    } else {
+      return `${eaches} each${eaches !== 1 ? 'es' : ''}`;
+    }
+  };
+
+  // Handle increasing quantity by 1
+  const handleIncreaseQuantity = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setQuantity(prev => prev + 1);
+  };
+
+  // Handle decreasing quantity by 1
+  const handleDecreaseQuantity = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (quantity > 1) {
+      setQuantity(prev => prev - 1);
+    }
+  };
+
+  // Handle direct input for eaches
+  const handleEachesChange = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newEaches = parseInt(e.target.value) || 0;
+    if (newEaches >= 0) {
+      const cases = getCaseCount();
+      const newQuantity = (cases * product.case_pack) + newEaches;
+      setQuantity(Math.max(1, newQuantity));
+    }
+  };
+
+  // Handle increasing cases by 1
+  const handleIncreaseCases = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!product) return;
+    const currentCases = getCaseCount();
+
+    // If we're going from 0 cases to 1 case, reset eaches to 0
+    if (currentCases === 0) {
+      setQuantity(product.case_pack);
+    } else {
+      setQuantity(quantity + product.case_pack);
+    }
+  };
+
+  // Handle decreasing cases by 1
+  const handleDecreaseCases = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!product) return;
+    const newQuantity = quantity - product.case_pack;
+    if (newQuantity >= 1) {
+      setQuantity(newQuantity);
+    } else {
+      setQuantity(1);
+    }
+  };
+
+  // Handle direct input for cases
+  const handleCasesChange = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newCases = parseInt(e.target.value) || 0;
+    if (newCases >= 0) {
+      const eaches = getEachesCount();
+      const newQuantity = (newCases * product.case_pack) + eaches;
+      setQuantity(Math.max(1, newQuantity));
+    }
+  };
 
   // Determine which price to show based on mode
   const displayPrice = isWholesaleMode && product.wholesale_price > 0 
@@ -41,10 +133,10 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   if (viewMode === 'list') {
     return (
       <div className="flex items-center border border-gray-200 p-2 md:p-4 cursor-pointer"
-      onClick={() => navigate(`/products/${product.id}`)}
-      title={product.description}
+        onClick={() => navigate(`/items/${product.id}`)}
+        title={product.description}
       >
-        <div className="w-24 h-24 mr-6 relative">
+        <div className="w-20 sm:w-24 h-20 sm:h-24 mr-3 sm:mr-6 relative flex-shrink-0">
           <LazyLoadImage
             src={product.image_url}
             alt={product.description}
@@ -54,70 +146,141 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
             wrapperClassName="w-full h-full"
           />
           {product.discount > 0 && (
-            <div className="absolute top-0 left-0 bg-blue-700 text-white text-xs px-2 py-1">
-              Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(2) : "0"} %
+            <div className="absolute top-0 left-0 bg-blue-700 text-white text-xs px-1 py-0.5 sm:px-2 sm:py-1">
+              Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(0) : "0"}%
             </div>
           )}
         </div>
 
-        <div className="flex-grow">
-          <div className='flex justify-between items-center'>
+        <div className="flex-grow min-w-0">
+          <div className='flex flex-col space-y-2'>
             <div>
-              <h3 className="font-semibold text-gray-800 mb-2">
+              <h3 className="font-semibold text-gray-800 text-sm sm:text-base line-clamp-2">
                 {product.description}
               </h3>
-              <div className="flex items-center flex-wrap">
+              <div className="flex items-center flex-wrap mt-1">
                 {product.discount ? (
                   <>
-                    <span className="text-red-600 font-bold text-xl mr-2">
+                    <span className="text-red-600 font-bold text-lg sm:text-xl mr-2">
                       ${product.discount.toFixed(2)}
                     </span>
-                    <span className="text-gray-400 line-through text-sm mr-2">
+                    <span className="text-gray-400 line-through text-xs sm:text-sm mr-2">
                       ${displayPrice.toFixed(2)}
                     </span>
                   </>
                 ) : (
-                  <span className="text-red-600 font-bold text-xl mr-2">
+                  <span className="text-red-600 font-bold text-lg sm:text-xl mr-2">
                     ${displayPrice.toFixed(2)}
                   </span>
                 )}
-                
-                {/* Show wholesale price for reference when in retail mode */}
-                {!isWholesaleMode && product.wholesale_price > 0 && (
-                  <span className="text-gray-500 text-xs">
-                    Wholesale: ${product.wholesale_price.toFixed(2)}
-                  </span>
-                )}
+                <span className="text-gray-500 text-xs">
+                    Case Pack: {product.case_pack}
+                </span>
               </div>
             </div>
-            <button 
-              type="button"
-              title="Add to Cart"
-              onClick={(e) => handleAddToCart(e)}
-              className="relative bg-red-500 text-white px-5 py-5 flex items-center hover:bg-red-600 overflow-hidden"
-            >
-              {/* Main Add to Cart Content */}
-              <div 
-                className={`
-                  flex items-center space-x-2 transition-all duration-300
-                  ${isAddedToCart ? 'opacity-0 translate-y-full' : 'opacity-100 translate-y-0'}
-                  absolute inset-0 flex justify-center items-center
-                `}
-              >
-                <ShoppingCart size={16} />
+            
+            {/* Quantity Controls and Add to Cart for List View */}
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              {/* Quantity Controls */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {/* Eaches Control */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-600 hidden sm:inline">Each:</span>
+                  <div className="flex items-center border rounded-xs">
+                    <button
+                      type='button'
+                      onClick={handleDecreaseQuantity}
+                      className="p-1 hover:bg-gray-100"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={getEachesCount()}
+                      onChange={handleEachesChange}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-1 py-1 text-xs w-8 text-center border-0 focus:outline-none focus:ring-0"
+                      min="0"
+                    />
+                    <button
+                      type='button'
+                      onClick={handleIncreaseQuantity}
+                      className="p-1 hover:bg-gray-100"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cases Control */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-600 hidden sm:inline">Case:</span>
+                  <div className="flex items-center border rounded-xs">
+                    <button
+                      type='button'
+                      onClick={handleDecreaseCases}
+                      className="p-1 hover:bg-gray-100"
+                      aria-label="Decrease cases"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={getCaseCount()}
+                      onChange={handleCasesChange}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-1 py-1 text-xs w-8 text-center border-0 focus:outline-none focus:ring-0"
+                      min="0"
+                    />
+                    <button
+                      type='button'
+                      onClick={handleIncreaseCases}
+                      className="p-1 hover:bg-gray-100"
+                      aria-label="Increase cases"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Added to Cart Notification */}
-              <div 
-                className={`
-                  flex items-center space-x-2 transition-all duration-300
-                  ${isAddedToCart ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}
-                  absolute inset-0 flex justify-center items-center
-                `}
+              {/* Add to Cart Button */}
+              <button 
+                type="button"
+                title="Add to Cart"
+                onClick={handleAddToCart}
+                className="relative bg-red-500 text-white p-4 sm:p-5 flex items-center hover:bg-red-600 overflow-hidden rounded-xs text-xs sm:text-sm flex-shrink-0"
               >
-                <Check size={16} />
-              </div>
-            </button>
+                {/* Main Add to Cart Content */}
+                <div 
+                  className={`
+                    flex items-center space-x-1 transition-all duration-300
+                    ${isAddedToCart ? 'opacity-0 translate-y-full' : 'opacity-100 translate-y-0'}
+                    absolute inset-0 flex justify-center items-center
+                  `}
+                >
+                  <ShoppingCart size={14} />
+                  <span className="hidden xs:inline">Add</span>
+                </div>
+
+                {/* Added to Cart Notification */}
+                <div 
+                  className={`
+                    flex items-center space-x-1 transition-all duration-300
+                    ${isAddedToCart ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}
+                    absolute inset-0 flex justify-center items-center
+                  `}
+                >
+                  <Check size={14} />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -127,89 +290,153 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   // Grid view (default)
   return (
     <div className="relative border border-gray-200 p-2 md:p-4 cursor-pointer rounded-xs"
-      onClick={() => navigate(`/products/${product.id}`)}
+      onClick={() => navigate(`/items/${product.id}`)}
       title={product.description}
     >
       {product.discount > 0 && (
-        <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-2 py-1 z-50">
-          Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(2) : "0"}%
+        <div className="absolute top-0 right-0 bg-blue-700 text-white text-xs px-1 sm:px-2 py-1 z-50 rounded-bl-xs">
+          Save {product.discount !== 0 ? ((displayPrice - product.discount) / displayPrice * 100).toFixed(0) : "0"}%
         </div>
       )}
-      <div className="relative mb-4">
+      <div className="relative mb-3">
         <LazyLoadImage
           src={product.image_url}
           alt={product.description}
           effect="blur"
           placeholderSrc={placeholderImage}
-          className="w-full h-48 object-contain"
-          wrapperClassName="w-full h-48"
+          className="w-full h-32 sm:h-40 md:h-48 object-contain"
+          wrapperClassName="w-full h-32 sm:h-40 md:h-48"
         />
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-800 mb-2 truncate">
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-800 mb-2 line-clamp-2 min-h-[2.5rem]">
           {product.description}
         </h3>
-        <div className="flex justify-between items-center mt-2">
-          <div>
+        
+        {/* Price Section */}
+        <div className="mb-3">
+          <div className="flex items-baseline gap-1 flex-wrap">
             {product.discount ? (
-              <div className="flex items-baseline gap-2">
-                <span className="text-red-600 font-bold">
+              <>
+                <span className="text-red-600 font-bold text-sm sm:text-base">
                   ${product.discount.toFixed(2)}
                 </span>
                 <span className="text-gray-600 line-through text-xs">
                   ${displayPrice.toFixed(2)}
                 </span>
-              </div>
+              </>
             ) : (
-              <span className="text-red-600 font-bold">
+              <span className="text-red-600 font-bold text-sm sm:text-base">
                 ${displayPrice.toFixed(2)}
               </span>
             )}
-            
-            {/* Show wholesale price for reference when in retail mode */}
-            {!isWholesaleMode && product.wholesale_price > 0 && (
-              <div className="text-gray-500 text-xs mt-1">
-                Wholesale: ${product.wholesale_price.toFixed(2)}
-              </div>
-            )}
-            {isWholesaleMode &&  (
-              <div className="text-gray-500 text-xs mt-1">
-                Retail: ${product.price.toFixed(2)}
-              </div>
-            )}
           </div>
-          <button 
-            type="button"
-            title="Add to Cart"
-            onClick={(e) => handleAddToCart(e)}
-            className="relative bg-red-500 text-white px-8 py-4 text-xs flex items-center space-x-1 hover:bg-red-600 cursor-pointer overflow-hidden rounded-xs"
-          >
-            {/* Main Add to Cart Content */}
-            <div 
-              className={`
-                flex items-center space-x-1 transition-all duration-300
-                ${isAddedToCart ? 'opacity-0 translate-y-full' : 'opacity-100 translate-y-0'}
-                absolute inset-0 flex justify-center items-center
-              `}
-            >
-              <ShoppingCart size={12} />
-              <span className='font-semibold'>Add</span>
-            </div>
-
-            {/* Added to Cart Notification */}
-            <div 
-              className={`
-                flex items-center space-x-1 transition-all duration-300
-                ${isAddedToCart ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}
-                absolute inset-0 flex justify-center items-center
-              `}
-            >
-              <Check size={12} />
-              <span className='font-semibold'>Added</span>
-            </div>
-          </button>
+          <div className="text-gray-500 text-xs mt-1">
+              Case Pack: {product.case_pack}
+          </div>
         </div>
+
+        {/* Quantity Controls for Grid View */}
+        <div className="mb-3 space-y-2">
+          {/* Eaches Control */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-600">Each:</span>
+            <div className="flex items-center border rounded-xs">
+              <button
+                type='button'
+                onClick={handleDecreaseQuantity}
+                className="p-1 hover:bg-gray-100"
+                aria-label="Decrease quantity"
+              >
+                <Minus size={12} />
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={getEachesCount()}
+                onChange={handleEachesChange}
+                onClick={(e) => e.stopPropagation()}
+                className="px-1 py-1 text-xs w-10 text-center border-0 focus:outline-none focus:ring-0"
+                min="0"
+              />
+              <button
+                type='button'
+                onClick={handleIncreaseQuantity}
+                className="p-1 hover:bg-gray-100"
+                aria-label="Increase quantity"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          </div>
+
+          {/* Cases Control */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-600">Case:</span>
+            <div className="flex items-center border rounded-xs">
+              <button
+                type='button'
+                onClick={handleDecreaseCases}
+                className="p-1 hover:bg-gray-100"
+                aria-label="Decrease cases"
+              >
+                <Minus size={12} />
+              </button>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={getCaseCount()}
+                onChange={handleCasesChange}
+                onClick={(e) => e.stopPropagation()}
+                className="px-1 py-1 text-xs w-10 text-center border-0 focus:outline-none focus:ring-0"
+                min="0"
+              />
+              <button
+                type='button'
+                onClick={handleIncreaseCases}
+                className="p-1 hover:bg-gray-100"
+                aria-label="Increase cases"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Add to Cart Button for Grid View */}
+        <button 
+          type="button"
+          title="Add to Cart"
+          onClick={handleAddToCart}
+          className="relative bg-red-500 text-white w-full py-4 sm:py-4 text-xs sm:text-sm flex items-center justify-center hover:bg-red-600 cursor-pointer overflow-hidden rounded-xs"
+        >
+          {/* Main Add to Cart Content */}
+          <div 
+            className={`
+              flex items-center space-x-1 transition-all duration-300
+              ${isAddedToCart ? 'opacity-0 translate-y-full' : 'opacity-100 translate-y-0'}
+              absolute inset-0 flex justify-center items-center
+            `}
+          >
+            <ShoppingCart size={14} />
+            <span className='font-semibold'>Add to Cart</span>
+          </div>
+
+          {/* Added to Cart Notification */}
+          <div 
+            className={`
+              flex items-center space-x-1 transition-all duration-300
+              ${isAddedToCart ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full'}
+              absolute inset-0 flex justify-center items-center
+            `}
+          >
+            <Check size={14} />
+            <span className='font-semibold text-xs'>{getFormattedQuantity()}</span>
+          </div>
+        </button>
       </div>
     </div>
   );
