@@ -1,4 +1,3 @@
-import React from "react";
 import { Trash2, Plus, Minus } from "lucide-react";
 import { useCartContext } from "../context/CartContext";
 import { useShoppingMode } from "../context/ShoppingModeContext";

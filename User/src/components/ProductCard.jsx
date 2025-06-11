@@ -11,11 +11,17 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   const { isWholesaleMode } = useShoppingMode();
   const navigate = useNavigate();
   const [isAddedToCart, setIsAddedToCart] = useState(false);
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState(0); // Initialize to 0
 
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Don't add to cart if quantity is 0
+    if (quantity === 0) {
+      return;
+    }
+    
     addToCart({
       ...product,
       isWholesale: isWholesaleMode && product.wholesale_price > 0
@@ -28,19 +34,20 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
 
   // Calculate case count for the current quantity
   const getCaseCount = () => {
-    if (!product) return 0;
+    if (!product || quantity === 0) return 0;
     return Math.floor(quantity / product.case_pack);
   };
 
   // Calculate eaches count (remainder after cases)
   const getEachesCount = () => {
     if (!product) return quantity;
+    if (quantity === 0) return 0;
     return quantity % product.case_pack;
   };
 
   // Format quantity as "X case(s) + Y each(es)"
   const getFormattedQuantity = () => {
-    if (!product) return `${quantity} each${quantity !== 1 ? 'es' : ''}`;
+    if (!product || quantity === 0) return '0 items';
 
     const cases = getCaseCount();
     const eaches = getEachesCount();
@@ -65,7 +72,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
   const handleDecreaseQuantity = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (quantity > 1) {
+    if (quantity > 0) {
       setQuantity(prev => prev - 1);
     }
   };
@@ -78,7 +85,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     if (newEaches >= 0) {
       const cases = getCaseCount();
       const newQuantity = (cases * product.case_pack) + newEaches;
-      setQuantity(Math.max(1, newQuantity));
+      setQuantity(Math.max(0, newQuantity));
     }
   };
 
@@ -89,7 +96,7 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     if (!product) return;
     const currentCases = getCaseCount();
 
-    // If we're going from 0 cases to 1 case, reset eaches to 0
+    // If we're going from 0 cases to 1 case, set to exactly 1 case (reset eaches to 0)
     if (currentCases === 0) {
       setQuantity(product.case_pack);
     } else {
@@ -103,24 +110,34 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     e.stopPropagation();
     if (!product) return;
     const newQuantity = quantity - product.case_pack;
-    if (newQuantity >= 1) {
+    if (newQuantity >= 0) {
       setQuantity(newQuantity);
     } else {
-      setQuantity(1);
+      setQuantity(0);
     }
   };
 
-  // Handle direct input for cases
-  const handleCasesChange = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const newCases = parseInt(e.target.value) || 0;
-    if (newCases >= 0) {
+// Handle direct input for cases
+const handleCasesChange = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const newCases = parseInt(e.target.value) || 0;
+  if (newCases >= 0) {
+    const currentCases = getCaseCount();
+    const currentEaches = getEachesCount();
+    
+    // If we're going from 0 cases to any number of cases and we have eaches, reset eaches to 0
+    if (currentCases === 0 && newCases > 0 && currentEaches > 0) {
+      const newQuantity = newCases * product.case_pack;
+      setQuantity(Math.max(0, newQuantity));
+    } else {
+      // Normal behavior - keep eaches and adjust cases
       const eaches = getEachesCount();
       const newQuantity = (newCases * product.case_pack) + eaches;
-      setQuantity(Math.max(1, newQuantity));
+      setQuantity(Math.max(0, newQuantity));
     }
-  };
+  }
+};
 
   // Determine which price to show based on mode
   const displayPrice = isWholesaleMode && product.wholesale_price > 0 
@@ -128,6 +145,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
     : product.price;
 
   const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzIDIiPjwvc3ZnPg==';
+
+  // Check if add to cart should be disabled
+  const isAddToCartDisabled = quantity === 0;
 
   // List view
   if (viewMode === 'list') {
@@ -190,8 +210,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
                     <button
                       type='button'
                       onClick={handleDecreaseQuantity}
-                      className="p-1 hover:bg-gray-100"
+                      className="p-1 hover:bg-gray-100 disabled:opacity-50"
                       aria-label="Decrease quantity"
+                      disabled={quantity === 0}
                     >
                       <Minus size={12} />
                     </button>
@@ -223,8 +244,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
                     <button
                       type='button'
                       onClick={handleDecreaseCases}
-                      className="p-1 hover:bg-gray-100"
+                      className="p-1 hover:bg-gray-100 disabled:opacity-50"
                       aria-label="Decrease cases"
+                      disabled={getCaseCount() === 0}
                     >
                       <Minus size={12} />
                     </button>
@@ -253,9 +275,16 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               {/* Add to Cart Button */}
               <button 
                 type="button"
-                title="Add to Cart"
+                title={isAddToCartDisabled ? "Select quantity to add to cart" : "Add to Cart"}
                 onClick={handleAddToCart}
-                className="relative bg-red-500 text-white p-4 sm:p-5 flex items-center hover:bg-red-600 overflow-hidden rounded-xs text-xs sm:text-sm flex-shrink-0"
+                disabled={isAddToCartDisabled}
+                className={`
+                  relative p-4 sm:p-5 flex items-center overflow-hidden rounded-xs text-xs sm:text-sm flex-shrink-0
+                  ${isAddToCartDisabled 
+                    ? 'bg-gray-400 text-white cursor-not-allowed' 
+                    : 'bg-red-500 text-white hover:bg-red-600 cursor-pointer'
+                  }
+                `}
               >
                 {/* Main Add to Cart Content */}
                 <div 
@@ -346,8 +375,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               <button
                 type='button'
                 onClick={handleDecreaseQuantity}
-                className="p-1 hover:bg-gray-100"
+                className="p-1 hover:bg-gray-100 disabled:opacity-50"
                 aria-label="Decrease quantity"
+                disabled={quantity === 0}
               >
                 <Minus size={12} />
               </button>
@@ -379,8 +409,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
               <button
                 type='button'
                 onClick={handleDecreaseCases}
-                className="p-1 hover:bg-gray-100"
+                className="p-1 hover:bg-gray-100 disabled:opacity-50"
                 aria-label="Decrease cases"
+                disabled={getCaseCount() === 0}
               >
                 <Minus size={12} />
               </button>
@@ -409,9 +440,16 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
         {/* Add to Cart Button for Grid View */}
         <button 
           type="button"
-          title="Add to Cart"
+          title={isAddToCartDisabled ? "Select quantity to add to cart" : "Add to Cart"}
           onClick={handleAddToCart}
-          className="relative bg-red-500 text-white w-full py-4 sm:py-4 text-xs sm:text-sm flex items-center justify-center hover:bg-red-600 cursor-pointer overflow-hidden rounded-xs"
+          disabled={isAddToCartDisabled}
+          className={`
+            relative w-full py-4 sm:py-4 text-xs sm:text-sm flex items-center justify-center overflow-hidden rounded-xs
+            ${isAddToCartDisabled 
+              ? 'bg-gray-400 text-white cursor-not-allowed' 
+              : 'bg-red-500 text-white hover:bg-red-600 cursor-pointer'
+            }
+          `}
         >
           {/* Main Add to Cart Content */}
           <div 
@@ -422,7 +460,9 @@ const ProductCard = ({ product, viewMode = 'grid' }) => {
             `}
           >
             <ShoppingCart size={14} />
-            <span className='font-semibold'>Add to Cart</span>
+            <span className='font-semibold'>
+              {isAddToCartDisabled ? 'Select Quantity' : 'Add to Cart'}
+            </span>
           </div>
 
           {/* Added to Cart Notification */}

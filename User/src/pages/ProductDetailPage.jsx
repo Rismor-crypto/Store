@@ -156,22 +156,25 @@ const ProductDetailPage = () => {
     }
   };
 
-  const handleCasesChange = (event) => {
-    if (!product) return;
-    const value = event.target.value;
-    if (value === '' || /^\d+$/.test(value)) {
-      const caseValue = value === '' ? 0 : parseInt(value, 10);
-      const eaches = getEachesCount();
+const handleCasesChange = (event) => {
+  if (!product) return;
+  const value = event.target.value;
+  if (value === '' || /^\d+$/.test(value)) {
+    const caseValue = value === '' ? 0 : parseInt(value, 10);
+    const currentCases = getCaseCount();
+    const currentEaches = getEachesCount();
 
-      const currentCases = getCaseCount();
-      if (currentCases === 0 && caseValue > 0) {
-        setQuantity(caseValue * product.case_pack);
-      } else {
-        const newQuantity = (caseValue * product.case_pack) + eaches;
-        setQuantity(newQuantity > 0 ? newQuantity : 1);
-      }
+    // If we're going from 0 cases to any number of cases and we have eaches, reset eaches to 0
+    if (currentCases === 0 && caseValue > 0 && currentEaches > 0) {
+      setQuantity(caseValue * product.case_pack);
+    } else {
+      // Normal behavior - keep eaches and adjust cases
+      const eaches = getEachesCount();
+      const newQuantity = (caseValue * product.case_pack) + eaches;
+      setQuantity(newQuantity > 0 ? newQuantity : 1);
     }
-  };
+  }
+};
 
   const handleCasesBlur = (event) => {
     if (!product) return;
